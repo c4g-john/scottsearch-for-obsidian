@@ -132,16 +132,30 @@ describe('RankedSearchIndex', () => {
     ]);
   });
 
-  it('precomputes configurable verbose context around the first content match', () => {
+  it('adds the configured verbose context on both sides of the compact preview', () => {
     const index = new RankedSearchIndex();
     index.upsert(note({
       path: 'Projects/Long note.md',
-      content: `${'a'.repeat(80)}needle${'b'.repeat(80)}`,
+      content: `${'a'.repeat(400)}needle${'b'.repeat(400)}`,
     }));
+
+    const narrow = index.search('+"needle"', { verboseContextCharacters: 20 }).results[0];
+    const wide = index.search('+"needle"', { verboseContextCharacters: 40 }).results[0];
+
+    expect((wide?.verboseSnippet.length ?? 0) - (narrow?.verboseSnippet.length ?? 0)).toBe(40);
+  });
+
+  it.each([
+    ['beginning', `needle${'b'.repeat(500)}`],
+    ['middle', `${'a'.repeat(250)}needle${'b'.repeat(250)}`],
+    ['end', `${'a'.repeat(500)}needle`],
+  ])('makes verbose longer than compact for a match near the %s', (_position, content) => {
+    const index = new RankedSearchIndex();
+    index.upsert(note({ path: 'Projects/Long note.md', content }));
 
     const result = index.search('+"needle"', { verboseContextCharacters: 20 }).results[0];
 
-    expect(result?.verboseSnippet).toBe(`…${'a'.repeat(20)}needle${'b'.repeat(20)}…`);
+    expect(result?.verboseSnippet.length).toBeGreaterThan(result?.snippet.length ?? 0);
   });
 
   it('uses the beginning of content when a semantic result has no literal match', () => {
@@ -153,6 +167,6 @@ describe('RankedSearchIndex', () => {
       verboseContextCharacters: 20,
     }).results[0];
 
-    expect(result?.verboseSnippet).toBe('A fictional opening with no literal quer…');
+    expect(result?.verboseSnippet).toBe('A fictional opening with no literal query term later.');
   });
 });

@@ -102,8 +102,8 @@ ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and A
 3. Paste `c4g-john/scottsearch-for-obsidian`.
 4. Enable **ScottSearch** under **Settings → Community plugins**.
 
-Alternatively, download `scottsearch-0.1.2.zip` from the
-[0.1.2 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.2).
+Alternatively, download `scottsearch-0.1.3.zip` from the
+[0.1.3 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.3).
 Unzip it and place the contained `scottsearch` folder inside
 `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
 
@@ -143,8 +143,8 @@ Use the **Detail** control beside the sort and filters to cycle **Title only →
 Default → Verbose**. The choice persists. Title-only results keep just the note
 title, relevance score, and relative path; verbose results show the configured
 context around the earliest matching phrase or term without repeating the
-search. Change the verbose context radius under **Settings → ScottSearch →
-Verbose result context** (20–1,000 characters on each side; 100 by default).
+search. Change **Settings → ScottSearch → Verbose result context** to add
+20–1,000 characters to each side of the compact preview (100 by default).
 
 ## Project and requests
 

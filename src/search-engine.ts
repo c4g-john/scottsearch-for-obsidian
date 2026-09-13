@@ -89,6 +89,8 @@ interface ScoredDocument {
 const BM25_K1 = 1.35;
 const BM25_B = 0.7;
 const DEFAULT_LIMIT = 10;
+const COMPACT_SNIPPET_BEFORE_MATCH = 90;
+const COMPACT_SNIPPET_AFTER_MATCH = 210;
 
 export class RankedSearchIndex {
   private readonly documents = new Map<string, IndexedDocument>();
@@ -348,32 +350,42 @@ function fuzzyMatchScore(value: string, query: string): number {
 }
 
 function createSnippet(content: string, highlights: string[]): string {
+  const matchIndex = findFirstContentMatch(content, highlights);
+  const center = matchIndex >= 0 ? matchIndex : 0;
+  const start = Math.max(0, center - COMPACT_SNIPPET_BEFORE_MATCH);
+  const end = Math.min(content.length, center + COMPACT_SNIPPET_AFTER_MATCH);
+  return formatSnippet(content, start, end);
+}
+
+function createVerboseSnippet(content: string, highlights: string[], contextCharacters: number): string {
+  const matchIndex = findFirstContentMatch(content, highlights);
+  if (matchIndex < 0) {
+    const end = Math.min(
+      content.length,
+      COMPACT_SNIPPET_AFTER_MATCH + contextCharacters * 2,
+    );
+    return formatSnippet(content, 0, end);
+  }
+
+  const start = Math.max(
+    0,
+    matchIndex - COMPACT_SNIPPET_BEFORE_MATCH - contextCharacters,
+  );
+  const end = Math.min(
+    content.length,
+    matchIndex + COMPACT_SNIPPET_AFTER_MATCH + contextCharacters,
+  );
+  return formatSnippet(content, start, end);
+}
+
+function findFirstContentMatch(content: string, highlights: string[]): number {
   const normalized = normalizeSearchText(content);
   let matchIndex = -1;
   for (const term of highlights) {
     const index = normalized.indexOf(term);
     if (index >= 0 && (matchIndex < 0 || index < matchIndex)) matchIndex = index;
   }
-
-  const center = matchIndex >= 0 ? matchIndex : 0;
-  const start = Math.max(0, center - 90);
-  const end = Math.min(content.length, center + 210);
-  return formatSnippet(content, start, end);
-}
-
-function createVerboseSnippet(content: string, highlights: string[], contextCharacters: number): string {
-  const normalized = normalizeSearchText(content);
-  let match: { start: number; end: number } | undefined;
-  for (const term of highlights) {
-    const start = normalized.indexOf(term);
-    if (start >= 0 && (!match || start < match.start)) match = { end: start + term.length, start };
-  }
-
-  const start = match ? Math.max(0, match.start - contextCharacters) : 0;
-  const end = match
-    ? Math.min(content.length, match.end + contextCharacters)
-    : Math.min(content.length, contextCharacters * 2);
-  return formatSnippet(content, start, end);
+  return matchIndex;
 }
 
 function formatSnippet(content: string, start: number, end: number): string {

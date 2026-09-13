@@ -85,7 +85,7 @@ export class ScottSearchSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Verbose result context')
-      .setDesc(`Characters to show before and after the first matching phrase or term in verbose results (${MIN_VERBOSE_CONTEXT_CHARACTERS}–${MAX_VERBOSE_CONTEXT_CHARACTERS}).`)
+      .setDesc(`Extra characters to add before and after the compact preview in verbose results (${MIN_VERBOSE_CONTEXT_CHARACTERS}–${MAX_VERBOSE_CONTEXT_CHARACTERS}).`)
       .addText((text) => {
         text.inputEl.type = 'number';
         text.inputEl.min = String(MIN_VERBOSE_CONTEXT_CHARACTERS);

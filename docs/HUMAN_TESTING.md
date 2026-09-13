@@ -46,9 +46,11 @@ Expected: required phrases and filters always apply; excluded notes never appear
 Expected: sorting and filters change predictably and controls never get stuck.
 Changing detail is immediate and does not show another “Ranking” or “Thinking”
 status. Title only contains just title, relevance, and relative path. Default
-keeps the familiar three-line preview. Verbose shows the configured amount on
-both sides of the earliest literal match; a meaning-only match starts at the
-beginning of the note.
+keeps the familiar three-line preview. Verbose adds the configured amount to
+both sides of that compact preview around the earliest literal match; a
+meaning-only match starts at the beginning of the note.
+When the note has more text available, Verbose must visibly contain more text
+than Default.
 
 ### 4. Use only the keyboard
 
