@@ -161,6 +161,11 @@ additional live and human gates.
 
 Run `npm run benchmark` to print the synthetic lexical-versus-hybrid relevance scorecard. The [benchmark guide](benchmarks/README.md) explains the metrics, deterministic semantic fixtures, privacy boundary, and how to add a safe regression case.
 
+Run `npm run --silent benchmark:scale` for a machine-readable engineering
+baseline at 100, 1,000, and 10,000 generated fictional documents. Its timing
+values are advisory; real Obsidian and device results still belong in the human
+beta.
+
 ## License
 
 [MIT](LICENSE)
