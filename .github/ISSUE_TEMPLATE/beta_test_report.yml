@@ -105,6 +105,7 @@ body:
         - label: Find a remembered idea
         - label: Exact phrases, exclusions, tags, paths, or dates
         - label: Sort and filter results
+        - label: Title-only, default, and verbose result detail
         - label: Keyboard navigation
         - label: Optional Ollama semantic ranking and fallback
         - label: Narrow panes, another theme, or mobile layout

@@ -16,6 +16,8 @@ Visit the [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-
 - Supports required terms, exact phrases, exclusions, metadata filters, and file-date predicates.
 - Sorts by relevance, created date, modified date, or filename.
 - Filters an existing result set by folder, tag, or recent modification without recomputing embeddings.
+- Cycles cached results through title-only, default, and verbose detail without rerunning search.
+- Lets you choose how many source characters verbose previews show before and after the first matching phrase or term.
 - Updates its index when notes are created, modified, renamed, or deleted.
 - Opens as a native Obsidian view and follows the active theme on desktop and mobile-sized panes.
 
@@ -136,6 +138,13 @@ For active development, run `npm run dev` and point the repository (or a symlink
 - **ScottSearch: Search selected text** opens the view using the active editor selection.
 
 Inside the search input, use the arrow keys to choose a result, `Enter` to open it, modifier-`Enter` to open a new tab, and `Escape` to clear.
+
+Use the **Detail** control beside the sort and filters to cycle **Title only →
+Default → Verbose**. The choice persists. Title-only results keep just the note
+title, relevance score, and relative path; verbose results show the configured
+context around the earliest matching phrase or term without repeating the
+search. Change the verbose context radius under **Settings → ScottSearch →
+Verbose result context** (20–1,000 characters on each side; 100 by default).
 
 ## Project and requests
 

@@ -7,6 +7,12 @@ import type {
   SearchResult,
   SortMode,
 } from './search-engine';
+import {
+  nextResultDisplayMode,
+  resultDisplayModeDescription,
+  resultDisplayModeLabel,
+  type ResultDisplayMode,
+} from './result-display';
 
 export const VIEW_TYPE_SCOTTSEARCH = 'scottsearch-view';
 
@@ -223,6 +229,31 @@ export class ScottSearchView extends ItemView {
       this.filters.modifiedSince = days > 0 ? Date.now() - days * 86_400_000 : undefined;
       void this.performSearch();
     });
+
+    this.createResultDisplayControl();
+  }
+
+  private createResultDisplayControl(): void {
+    const wrapper = this.filterEl.createDiv({ cls: 'scottsearch-filter scottsearch-detail-control' });
+    wrapper.createSpan({ text: 'Detail' });
+    const button = wrapper.createEl('button', {
+      attr: { type: 'button' },
+      cls: 'scottsearch-detail-button',
+    });
+    const updateButton = (mode: ResultDisplayMode): void => {
+      button.setText(resultDisplayModeLabel(mode));
+      const description = resultDisplayModeDescription(mode);
+      button.setAttribute('aria-label', description);
+      button.setAttribute('title', description);
+    };
+    updateButton(this.plugin.settings.resultDisplayMode);
+    button.addEventListener('click', () => {
+      const next = nextResultDisplayMode(this.plugin.settings.resultDisplayMode);
+      this.plugin.settings.resultDisplayMode = next;
+      updateButton(next);
+      this.renderResults();
+      void this.plugin.savePluginData();
+    });
   }
 
   private createSelect(
@@ -250,6 +281,7 @@ export class ScottSearchView extends ItemView {
       return;
     }
 
+    const displayMode = this.plugin.settings.resultDisplayMode;
     this.results.forEach((result, index) => {
       const button = this.resultsEl.createEl('button', {
         attr: {
@@ -268,12 +300,17 @@ export class ScottSearchView extends ItemView {
         text: `${Math.round(result.score * 100)} relevance`,
       });
       button.createSpan({ cls: 'scottsearch-result-path', text: result.path });
-      const snippet = button.createSpan({ cls: 'scottsearch-result-snippet' });
-      appendHighlighted(snippet, result.snippet || 'No text preview available.', result.highlightTerms);
-      const footer = button.createSpan({ cls: 'scottsearch-result-footer' });
-      footer.createSpan({ text: `Created ${formatRelativeDate(result.ctime)}` });
-      footer.createSpan({ text: `Modified ${formatRelativeDate(result.mtime)}` });
-      for (const tag of result.tags.slice(0, 3)) footer.createSpan({ cls: 'scottsearch-tag', text: tag });
+      if (displayMode !== 'title') {
+        const snippet = button.createSpan({
+          cls: `scottsearch-result-snippet${displayMode === 'verbose' ? ' is-verbose' : ''}`,
+        });
+        const preview = displayMode === 'verbose' ? result.verboseSnippet : result.snippet;
+        appendHighlighted(snippet, preview || 'No text preview available.', result.highlightTerms);
+        const footer = button.createSpan({ cls: 'scottsearch-result-footer' });
+        footer.createSpan({ text: `Created ${formatRelativeDate(result.ctime)}` });
+        footer.createSpan({ text: `Modified ${formatRelativeDate(result.mtime)}` });
+        for (const tag of result.tags.slice(0, 3)) footer.createSpan({ cls: 'scottsearch-tag', text: tag });
+      }
 
       button.addEventListener('mouseenter', () => {
         this.selectedIndex = index;

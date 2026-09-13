@@ -133,6 +133,13 @@ input.scottsearch-input::-webkit-search-cancel-button {
   width: 100%;
 }
 
+.scottsearch-detail-button {
+  font-size: var(--font-ui-small);
+  height: 30px;
+  margin: 0;
+  width: 100%;
+}
+
 .scottsearch-status {
   color: var(--text-muted);
   flex: none;
@@ -219,6 +226,12 @@ button.scottsearch-result:focus-visible {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+}
+
+.scottsearch-result-snippet.is-verbose {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
 }
 
 .scottsearch-result mark {

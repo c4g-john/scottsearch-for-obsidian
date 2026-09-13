@@ -40,8 +40,15 @@ Expected: required phrases and filters always apply; excluded notes never appear
 - Change the sort from relevance to filename, created date, and modified date.
 - Choose a folder, tag, or recent-modification filter.
 - Clear each filter again.
+- Use **Detail** to cycle through **Title only**, **Default**, and **Verbose**.
+- In ScottSearch settings, change **Verbose result context**, run a search, and return to verbose detail.
 
-Expected: the same visible result set changes predictably and controls never get stuck.
+Expected: sorting and filters change predictably and controls never get stuck.
+Changing detail is immediate and does not show another “Ranking” or “Thinking”
+status. Title only contains just title, relevance, and relative path. Default
+keeps the familiar three-line preview. Verbose shows the configured amount on
+both sides of the earliest literal match; a meaning-only match starts at the
+beginning of the note.
 
 ### 4. Use only the keyboard
 

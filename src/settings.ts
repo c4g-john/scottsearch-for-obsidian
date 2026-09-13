@@ -3,6 +3,13 @@ import { Platform, PluginSettingTab, Setting } from 'obsidian';
 import type ScottSearchPlugin from './main';
 import { ModelAssetManagerModal } from './model-assets/modal';
 import { formatModelBytes, type ModelAssetStatus } from './model-assets/verified-model-manager';
+import {
+  DEFAULT_RESULT_DISPLAY_MODE,
+  DEFAULT_VERBOSE_CONTEXT_CHARACTERS,
+  MAX_VERBOSE_CONTEXT_CHARACTERS,
+  MIN_VERBOSE_CONTEXT_CHARACTERS,
+  type ResultDisplayMode,
+} from './result-display';
 
 declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
 declare const SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: boolean;
@@ -10,6 +17,7 @@ declare const SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB: boolean;
 
 export interface ScottSearchSettings {
   resultLimit: number;
+  resultDisplayMode: ResultDisplayMode;
   searchDelayMs: number;
   ignoredFolders: string[];
   maxFileSizeKb: number;
@@ -19,6 +27,7 @@ export interface ScottSearchSettings {
   ollamaModel: string;
   semanticWeight: number;
   embeddingBatchSize: number;
+  verboseContextCharacters: number;
 }
 
 export type SemanticProviderId = 'ollama' | 'on-device';
@@ -29,11 +38,13 @@ export const DEFAULT_SETTINGS: ScottSearchSettings = {
   maxFileSizeKb: 1024,
   ollamaEndpoint: 'http://localhost:11434',
   ollamaModel: 'embeddinggemma',
+  resultDisplayMode: DEFAULT_RESULT_DISPLAY_MODE,
   resultLimit: 10,
   searchDelayMs: 650,
   semanticEnabled: false,
   semanticProvider: 'ollama',
   semanticWeight: 0.78,
+  verboseContextCharacters: DEFAULT_VERBOSE_CONTEXT_CHARACTERS,
 };
 
 export class ScottSearchSettingTab extends PluginSettingTab {
@@ -71,6 +82,29 @@ export class ScottSearchSettingTab extends PluginSettingTab {
           this.plugin.settings.searchDelayMs = Number(value);
           await this.plugin.savePluginData();
         }));
+
+    new Setting(containerEl)
+      .setName('Verbose result context')
+      .setDesc(`Characters to show before and after the first matching phrase or term in verbose results (${MIN_VERBOSE_CONTEXT_CHARACTERS}–${MAX_VERBOSE_CONTEXT_CHARACTERS}).`)
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text.inputEl.min = String(MIN_VERBOSE_CONTEXT_CHARACTERS);
+        text.inputEl.max = String(MAX_VERBOSE_CONTEXT_CHARACTERS);
+        text.inputEl.step = '10';
+        text
+          .setValue(String(this.plugin.settings.verboseContextCharacters))
+          .onChange(async (value) => {
+            const parsed = Number(value);
+            if (
+              Number.isSafeInteger(parsed)
+              && parsed >= MIN_VERBOSE_CONTEXT_CHARACTERS
+              && parsed <= MAX_VERBOSE_CONTEXT_CHARACTERS
+            ) {
+              this.plugin.settings.verboseContextCharacters = parsed;
+              await this.plugin.savePluginData();
+            }
+          });
+      });
 
     new Setting(containerEl)
       .setName('Ignored folders')

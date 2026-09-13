@@ -5,6 +5,7 @@ import {
   tokenize,
   type SearchQuery,
 } from './query';
+import { normalizeVerboseContextCharacters } from './result-display';
 
 export interface SearchDocument {
   path: string;
@@ -49,6 +50,7 @@ export interface SearchResult {
   lexicalScore: number;
   semanticScore?: number;
   snippet: string;
+  verboseSnippet: string;
   tags: string[];
   ctime: number;
   mtime: number;
@@ -74,6 +76,7 @@ export interface SearchOptions {
   semanticScores?: ReadonlyMap<string, number>;
   semanticWeight?: number;
   sort?: SortMode;
+  verboseContextCharacters?: number;
 }
 
 interface ScoredDocument {
@@ -205,6 +208,7 @@ export class RankedSearchIndex {
       ...query.semanticTerms,
       ...query.requiredTerms,
     ]);
+    const verboseContextCharacters = normalizeVerboseContextCharacters(options.verboseContextCharacters);
 
     return {
       facets,
@@ -219,6 +223,7 @@ export class RankedSearchIndex {
         score: scores.score,
         semanticScore: scores.semanticScore,
         snippet: createSnippet(document.content, highlights),
+        verboseSnippet: createVerboseSnippet(document.content, highlights, verboseContextCharacters),
         tags: document.tags,
         title: document.basename,
       })),
@@ -353,6 +358,25 @@ function createSnippet(content: string, highlights: string[]): string {
   const center = matchIndex >= 0 ? matchIndex : 0;
   const start = Math.max(0, center - 90);
   const end = Math.min(content.length, center + 210);
+  return formatSnippet(content, start, end);
+}
+
+function createVerboseSnippet(content: string, highlights: string[], contextCharacters: number): string {
+  const normalized = normalizeSearchText(content);
+  let match: { start: number; end: number } | undefined;
+  for (const term of highlights) {
+    const start = normalized.indexOf(term);
+    if (start >= 0 && (!match || start < match.start)) match = { end: start + term.length, start };
+  }
+
+  const start = match ? Math.max(0, match.start - contextCharacters) : 0;
+  const end = match
+    ? Math.min(content.length, match.end + contextCharacters)
+    : Math.min(content.length, contextCharacters * 2);
+  return formatSnippet(content, start, end);
+}
+
+function formatSnippet(content: string, start: number, end: number): string {
   const excerpt = content
     .slice(start, end)
     .replace(/^---[\s\S]*?---\s*/u, '')

@@ -20,6 +20,10 @@ import {
 import { OnDeviceEmbeddingProvider } from './on-device/provider';
 import { parseQuery } from './query';
 import {
+  normalizeResultDisplayMode,
+  normalizeVerboseContextCharacters,
+} from './result-display';
+import {
   RankedSearchIndex,
   type ResultFilters,
   type SearchResponse,
@@ -183,6 +187,7 @@ export default class ScottSearchPlugin extends Plugin {
         semanticScores,
         semanticWeight: this.settings.semanticWeight,
         sort,
+        verboseContextCharacters: this.settings.verboseContextCharacters,
       }),
       fallbackReason,
       semanticActive: semanticScores !== undefined,
@@ -319,6 +324,10 @@ export default class ScottSearchPlugin extends Plugin {
   private async loadPluginData(): Promise<void> {
     const data = (await this.loadData()) as PersistedData | null;
     this.settings = { ...DEFAULT_SETTINGS, ...(data?.settings ?? {}) };
+    this.settings.resultDisplayMode = normalizeResultDisplayMode(this.settings.resultDisplayMode);
+    this.settings.verboseContextCharacters = normalizeVerboseContextCharacters(
+      this.settings.verboseContextCharacters,
+    );
     if (!SCOTTSEARCH_ON_DEVICE_EXPERIMENT && this.settings.semanticProvider === 'on-device') {
       this.settings.semanticProvider = 'ollama';
     }

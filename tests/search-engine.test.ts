@@ -131,4 +131,28 @@ describe('RankedSearchIndex', () => {
       'People/Meeting notes.md',
     ]);
   });
+
+  it('precomputes configurable verbose context around the first content match', () => {
+    const index = new RankedSearchIndex();
+    index.upsert(note({
+      path: 'Projects/Long note.md',
+      content: `${'a'.repeat(80)}needle${'b'.repeat(80)}`,
+    }));
+
+    const result = index.search('+"needle"', { verboseContextCharacters: 20 }).results[0];
+
+    expect(result?.verboseSnippet).toBe(`…${'a'.repeat(20)}needle${'b'.repeat(20)}…`);
+  });
+
+  it('uses the beginning of content when a semantic result has no literal match', () => {
+    const index = new RankedSearchIndex();
+    index.upsert(note({ path: 'Concept.md', content: 'A fictional opening with no literal query term later.' }));
+
+    const result = index.search('synonym', {
+      semanticScores: new Map([['Concept.md', 0.9]]),
+      verboseContextCharacters: 20,
+    }).results[0];
+
+    expect(result?.verboseSnippet).toBe('A fictional opening with no literal quer…');
+  });
 });
