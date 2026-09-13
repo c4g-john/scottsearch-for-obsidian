@@ -25,6 +25,7 @@ all-mobile-enable recommendation.
 Use an exact, reviewable mobile-lab build supplied by the maintainer through the
 [non-public lab procedure](../research/mobile-on-device-lab/README.md). Record
 its commit, main.js SHA-256, model revision, runtime version, and build command.
+Also record the corpus SHA-256 from `SCOTTSEARCH_LAB_IDENTITY.json`.
 Never substitute the public release: public releases intentionally have no
 mobile model control. Never distribute the lab build as a GitHub release or
 through BRAT.
@@ -32,10 +33,11 @@ through BRAT.
 ## Safe workload
 
 Use only the repository's fictional benchmark corpus expanded to 1,000 Markdown
-files. The helper at scripts/create-obsidian-test-vault.mjs creates the same
-deterministic notes for every run after the maintainer supplies the reviewed
-model fixture and lab bundle. Transfer that test vault to the device using the
-tester's normal, trusted file-transfer method.
+files. After the audited lab build, run
+`node scripts/create-lab-test-vault.mjs mobile`.
+The builder verifies the lab checksum, uses the distinct lab plugin ID, leaves
+semantic ranking off, and refuses to overwrite an existing target. Transfer
+only that generated vault to the device using a trusted local method.
 
 Do not use a personal vault, paste private note text into logs, publish a device
 name, or publish a full filesystem path. Report only the device class, general
@@ -133,6 +135,7 @@ Environment and identity:
 | Obsidian version | |
 | ScottSearch lab commit | |
 | main.js SHA-256 | |
+| Fictional corpus SHA-256 | |
 | Runtime / backend | |
 | Model revision | |
 | Approximate free storage | |

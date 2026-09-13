@@ -8,10 +8,15 @@ import { gzipSync } from 'fflate';
 
 const mode = process.argv[2] ?? 'development-experiment';
 const mobileLab = mode === 'mobile-lab';
-const production = mode === 'production' || mode === 'production-experiment' || mobileLab;
+const desktopLab = mode === 'desktop-lab';
+const labDirectory = mobileLab
+  ? 'research/mobile-on-device-lab/dist'
+  : desktopLab
+    ? 'research/desktop-on-device-lab/dist'
+    : undefined;
+const production = mode === 'production' || mode === 'production-experiment' || labDirectory !== undefined;
 const includeOnDeviceExperiment = mode !== 'production';
-const mobileLabDirectory = 'research/mobile-on-device-lab/dist';
-if (mobileLab) mkdirSync(mobileLabDirectory, { recursive: true });
+if (labDirectory) mkdirSync(labDirectory, { recursive: true });
 const require = createRequire(import.meta.url);
 
 let embeddedWorkerPlugin;
@@ -155,6 +160,7 @@ const context = await esbuild.context({
   },
   bundle: true,
   define: {
+    SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB: JSON.stringify(desktopLab),
     SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: JSON.stringify(mobileLab),
     SCOTTSEARCH_ON_DEVICE_EXPERIMENT: JSON.stringify(includeOnDeviceExperiment),
   },
@@ -178,7 +184,7 @@ const context = await esbuild.context({
   format: 'cjs',
   logLevel: 'info',
   minify: production,
-  outfile: mobileLab ? `${mobileLabDirectory}/main.js` : 'main.js',
+  outfile: labDirectory ? `${labDirectory}/main.js` : 'main.js',
   plugins: [embeddedWorkerPlugin ?? disabledWorkerPlugin],
   sourcemap: production ? false : 'inline',
   target: 'es2021',
@@ -189,18 +195,29 @@ console.log(workerSummary ?? 'Release-safe build: the unreleased on-device exper
 if (production) {
   await context.rebuild();
   await context.dispose();
-  if (mobileLab) {
+  if (labDirectory) {
     const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
-    writeFileSync(`${mobileLabDirectory}/manifest.json`, `${JSON.stringify({
+    const labManifest = mobileLab
+      ? {
+          description: 'Unreleased synthetic-vault test build for ScottSearch mobile model research.',
+          id: 'scottsearch-mobile-lab',
+          isDesktopOnly: false,
+          name: 'ScottSearch Mobile Lab',
+        }
+      : {
+          description: 'Unreleased synthetic-vault test build for ScottSearch desktop model research.',
+          id: 'scottsearch-desktop-lab',
+          isDesktopOnly: true,
+          name: 'ScottSearch Desktop Lab',
+        };
+    writeFileSync(`${labDirectory}/manifest.json`, `${JSON.stringify({
       ...manifest,
-      description: 'Unreleased synthetic-vault test build for ScottSearch mobile model research.',
-      id: 'scottsearch-mobile-lab',
-      name: 'ScottSearch Mobile Lab',
+      ...labManifest,
     }, null, 2)}\n`);
-    copyFileSync('styles.css', `${mobileLabDirectory}/styles.css`);
-    copyFileSync('research/mobile-on-device-lab/README.md', `${mobileLabDirectory}/SAFETY_NOTICE.md`);
-    copyFileSync('research/mobile-on-device-lab/EXPECTED_SHA256', `${mobileLabDirectory}/EXPECTED_SHA256`);
-    console.log(`Wrote the non-public mobile lab to ${mobileLabDirectory}.`);
+    copyFileSync('styles.css', `${labDirectory}/styles.css`);
+    copyFileSync(`${labDirectory.replace(/\/dist$/u, '')}/README.md`, `${labDirectory}/SAFETY_NOTICE.md`);
+    copyFileSync(`${labDirectory.replace(/\/dist$/u, '')}/EXPECTED_SHA256`, `${labDirectory}/EXPECTED_SHA256`);
+    console.log(`Wrote the non-public ${mobileLab ? 'mobile' : 'desktop'} lab to ${labDirectory}.`);
   }
 } else {
   await context.watch();

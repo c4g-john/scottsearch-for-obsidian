@@ -41,14 +41,23 @@ and then verifies:
 - absence of the unreleased on-device runtime, model URLs, and experiment UI
   from the normal production bundle.
 
-The development-only worker remains reproducible with:
+The development-only worker can still replace the local root bundle for direct
+research with:
 
 ~~~sh
 npm run build:experiment
 ~~~
 
-That command is not used by CI or the release workflow. Run npm run build
-afterward to restore the release-safe main.js.
+That command is not used by CI or the release workflow. Run `npm run build`
+afterward to restore the release-safe `main.js`. Named human testers must not use
+that mutable artifact. Their distinct, checksum-pinned kit is built with:
+
+~~~sh
+npm run build:desktop-lab
+~~~
+
+The desktop lab writes only to an ignored research directory, is checked in CI,
+and remains excluded from every GitHub release.
 
 The live, read-only gate checks the public repository, Community catalog, tag,
 release state, and required GitHub release assets. Inspect a human-testing

@@ -6,6 +6,7 @@ import { formatModelBytes, type ModelAssetStatus } from './model-assets/verified
 
 declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
 declare const SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: boolean;
+declare const SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB: boolean;
 
 export interface ScottSearchSettings {
   resultLimit: number;
@@ -103,9 +104,11 @@ export class ScottSearchSettingTab extends PluginSettingTab {
       cls: 'setting-item-description',
       text: SCOTTSEARCH_MOBILE_ON_DEVICE_LAB
         ? 'Unreleased mobile lab: use only the fictional test vault and the published matrix protocol.'
-        : SCOTTSEARCH_ON_DEVICE_EXPERIMENT
-          ? 'Choose whether meaning is calculated by your Ollama endpoint or, on desktop, inside an experimental ScottSearch worker.'
-          : 'Meaning is calculated by the Ollama endpoint you choose. Lexical search remains entirely inside Obsidian.',
+        : SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB
+          ? 'Unreleased desktop lab: use only the fictional test vault and the published matrix protocol.'
+          : SCOTTSEARCH_ON_DEVICE_EXPERIMENT
+            ? 'Choose whether meaning is calculated by your Ollama endpoint or, on desktop, inside an experimental ScottSearch worker.'
+            : 'Meaning is calculated by the Ollama endpoint you choose. Lexical search remains entirely inside Obsidian.',
     });
 
     if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
@@ -187,7 +190,9 @@ export class ScottSearchSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName(SCOTTSEARCH_MOBILE_ON_DEVICE_LAB
           ? 'Mobile on-device lab — unreleased'
-          : 'On-device model experiment')
+          : SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB
+            ? 'Desktop on-device lab — unreleased'
+            : 'On-device model experiment')
         .setHeading();
       if (!Platform.isDesktopApp && !SCOTTSEARCH_MOBILE_ON_DEVICE_LAB) {
         containerEl.createEl('p', {
@@ -199,7 +204,9 @@ export class ScottSearchSettingTab extends PluginSettingTab {
           cls: 'setting-item-description',
           text: SCOTTSEARCH_MOBILE_ON_DEVICE_LAB
             ? 'This unpublished lab may fail or use heavy memory, battery, and CPU. Use only the 1,000-note fictional test vault; never a personal vault.'
-            : 'Download the reviewed model, then choose “On-device model” above to calculate meaning in a background worker. Note text never leaves Obsidian in this mode.',
+            : SCOTTSEARCH_DESKTOP_ON_DEVICE_LAB
+              ? 'This unpublished desktop lab may fail or use heavy memory and CPU. Use only the 1,000-note fictional test vault; never a personal vault.'
+              : 'Download the reviewed model, then choose “On-device model” above to calculate meaning in a background worker. Note text never leaves Obsidian in this mode.',
         });
         const modelSetting = new Setting(containerEl)
           .setName('Experimental model files')

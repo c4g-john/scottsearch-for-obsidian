@@ -23,6 +23,7 @@ npm run build:mobile-lab
 git rev-parse HEAD
 shasum -a 256 research/mobile-on-device-lab/dist/main.js
 cat research/mobile-on-device-lab/dist/EXPECTED_SHA256
+node scripts/create-lab-test-vault.mjs mobile
 ~~~
 
 The command writes only:
@@ -50,14 +51,18 @@ The generated directory is ignored by Git. The audit fails unless:
 The runtime is compressed by the exact pinned fflate version rather than the
 host's zlib, so macOS and Linux builders must produce the same reviewed bytes.
 Record the commit and printed SHA-256 in every device report. A tester should
-reject an artifact whose digest is missing or different.
+also record the generated corpus SHA-256 from
+`SCOTTSEARCH_LAB_IDENTITY.json`, and reject an artifact whose identity record is
+missing or different.
 
-## Install only in the fictional test vault
+## Transfer only the generated fictional test vault
 
-1. Back up and remove any earlier lab copy.
-2. Copy the generated dist folder to
-   <fictional vault>/.obsidian/plugins/scottsearch-mobile-lab.
-3. Confirm the plugin list says **ScottSearch Mobile Lab**, not ScottSearch.
+1. Remove any earlier lab test vault before running the builder; it refuses to
+   overwrite an existing target.
+2. Transfer only the generated vault whose temporary path the builder prints,
+   using a trusted local method.
+3. Confirm it contains exactly 1,000 fictional Markdown notes and that the
+   plugin list says **ScottSearch Mobile Lab**, not ScottSearch.
 4. Follow every case and the predeclared budgets in the matrix.
 5. Record failures, Unsupported, and Not measurable results; never turn them
    into passes.

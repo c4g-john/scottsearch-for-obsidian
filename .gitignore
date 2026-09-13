@@ -3,6 +3,7 @@ main.js
 main.js.map
 /model-assets/
 /research/mobile-on-device-lab/dist/
+/research/desktop-on-device-lab/dist/
 coverage/
 .DS_Store
 *.log
