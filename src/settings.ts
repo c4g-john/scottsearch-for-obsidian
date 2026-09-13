@@ -1,6 +1,8 @@
-import { PluginSettingTab, Setting } from 'obsidian';
+import { Platform, PluginSettingTab, Setting } from 'obsidian';
 
 import type ScottSearchPlugin from './main';
+import { ModelAssetManagerModal } from './model-assets/modal';
+import { formatModelBytes, type ModelAssetStatus } from './model-assets/verified-model-manager';
 
 export interface ScottSearchSettings {
   resultLimit: number;
@@ -145,6 +147,44 @@ export class ScottSearchSettingTab extends PluginSettingTab {
           await this.plugin.savePluginData();
         }));
 
+    new Setting(containerEl).setName('On-device model experiment').setHeading();
+    if (!Platform.isDesktopApp) {
+      containerEl.createEl('p', {
+        cls: 'setting-item-description',
+        text: 'On-device model files are unavailable on phones and tablets while compatibility, memory, heat, and battery use are tested. Ollama and lexical settings above are unchanged.',
+      });
+    } else {
+      containerEl.createEl('p', {
+        cls: 'setting-item-description',
+        text: 'Prepare verified model files for a future desktop-only experiment. This does not enable a new search mode or send note text anywhere.',
+      });
+      const modelSetting = new Setting(containerEl)
+        .setName('Experimental model files')
+        .setDesc('Checking local files…');
+      let actionButtonText = 'Review model files';
+      modelSetting.addButton((button) => {
+        button
+          .setButtonText(actionButtonText)
+          .onClick(() => {
+            new ModelAssetManagerModal(this.app, this.plugin.modelAssetManager, () => this.display()).open();
+          });
+        void this.plugin.modelAssetManager.getStatus(false).then((status) => {
+          if (!modelSetting.settingEl.isConnected) return;
+          modelSetting.setDesc(describeModelAssets(status, this.plugin.modelAssetManager.totalBytes));
+          actionButtonText = status.state === 'ready'
+            ? 'Manage model files'
+            : status.state === 'invalid'
+              ? 'Repair model files'
+              : 'Review download';
+          button.setButtonText(actionButtonText);
+        }).catch(() => {
+          if (modelSetting.settingEl.isConnected) {
+            modelSetting.setDesc('ScottSearch could not check the local model files. Open the manager for details.');
+          }
+        });
+      });
+    }
+
     new Setting(containerEl)
       .setName('Index status')
       .setDesc(this.plugin.describeIndexStatus())
@@ -159,4 +199,14 @@ export class ScottSearchSettingTab extends PluginSettingTab {
           this.display();
         }));
   }
+}
+
+function describeModelAssets(status: ModelAssetStatus, expectedBytes: number): string {
+  if (status.state === 'ready') {
+    return `${formatModelBytes(status.diskBytes)} on disk and verified when downloaded. Search still uses your current lexical or Ollama setting.`;
+  }
+  if (status.state === 'invalid') {
+    return `${formatModelBytes(status.diskBytes)} of existing files need repair before use. ${status.reason ?? ''}`.trim();
+  }
+  return `Not downloaded. The optional download is ${formatModelBytes(expectedBytes)} and never starts without confirmation.`;
 }

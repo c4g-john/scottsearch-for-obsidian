@@ -2,12 +2,16 @@ import {
   getAllTags,
   MarkdownView,
   Notice,
+  normalizePath,
   Plugin,
   TFile,
   type TAbstractFile,
 } from 'obsidian';
 
 import { OllamaEmbeddingProvider } from './ollama-provider';
+import { ARCTIC_EMBED_XS_INT8 } from './model-assets/manifest';
+import { ObsidianModelAssetStore } from './model-assets/obsidian-store';
+import { VerifiedModelAssetManager } from './model-assets/verified-model-manager';
 import { parseQuery } from './query';
 import {
   RankedSearchIndex,
@@ -48,6 +52,7 @@ export default class ScottSearchPlugin extends Plugin {
   settings: ScottSearchSettings = { ...DEFAULT_SETTINGS };
   readonly lexicalIndex = new RankedSearchIndex();
   readonly semanticIndex = new SemanticIndex();
+  modelAssetManager!: VerifiedModelAssetManager;
 
   private persistedEmbeddings: SerializedEmbeddingCache = {};
   private status: IndexStatus = {
@@ -65,6 +70,13 @@ export default class ScottSearchPlugin extends Plugin {
   private saveQueue: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
+    const pluginDirectory = this.manifest.dir
+      ?? normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}`);
+    this.modelAssetManager = new VerifiedModelAssetManager(
+      normalizePath(`${pluginDirectory}/model-assets`),
+      ARCTIC_EMBED_XS_INT8,
+      new ObsidianModelAssetStore(this.app.vault.adapter),
+    );
     await this.loadPluginData();
 
     this.registerView(VIEW_TYPE_SCOTTSEARCH, (leaf) => new ScottSearchView(leaf, this));
@@ -101,6 +113,7 @@ export default class ScottSearchPlugin extends Plugin {
     this.semanticGeneration += 1;
     for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
     if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
+    this.modelAssetManager.cancelInstall();
     this.app.workspace.detachLeavesOfType(VIEW_TYPE_SCOTTSEARCH);
   }
 

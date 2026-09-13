@@ -66,12 +66,21 @@ The default endpoint is `http://localhost:11434`. You can choose another Ollama 
 
 If Ollama is stopped, the model is missing, or the response is invalid, the search view explains the fallback and continues with lexical ranking.
 
+## Experimental on-device model files
+
+The unreleased development branch contains the consent and integrity foundation for a future desktop-only embedded model. It does **not** add an on-device search mode yet; [the separate worker experiment](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21) remains planned.
+
+On desktop, **Settings → ScottSearch → On-device model experiment** lets an interested tester review a 23.7 MB Snowflake Arctic Embed XS download. Nothing downloads until a second explicit confirmation. Every required file is pinned to an immutable revision, limited to an exact size, verified with SHA-256 in staging, and activated only after the whole set passes. The dialog supports progress, cancellation, retry, re-verification, and safe removal.
+
+The download contains model data, does not read or upload notes, and does not update plugin code. Mobile controls stay disabled until the [mobile compatibility, memory, heat, and battery matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/22) is complete. See the [plain-language model file and safety guide](docs/MODEL_ASSETS.md) and the [measured research decision](docs/research/on-device-embeddings.md).
+
 ## Privacy
 
 - Lexical indexing happens inside Obsidian.
 - Semantic search is disabled until you enable it.
 - When enabled, text is sent only to the Ollama endpoint shown in settings.
 - The default endpoint is on the same device and needs no secret.
+- The optional experimental model download never starts without a separate confirmation and never contains note text.
 - ScottSearch does not include analytics or telemetry.
 - Ignored folders and oversized note-body limits are configurable.
 

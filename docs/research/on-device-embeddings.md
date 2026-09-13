@@ -67,6 +67,6 @@ The desktop experiment may reach human testers only when all of these are true:
 
 The work is split into public follow-up issues so the experiment cannot quietly bypass these gates:
 
-- [#23: consent-first verified model download and cache manager](https://github.com/c4g-john/scottsearch-for-obsidian/issues/23)
+- [#23: consent-first verified model download and cache manager](https://github.com/c4g-john/scottsearch-for-obsidian/issues/23) — safety foundation implemented
 - [#21: desktop worker prototype behind an experiment setting](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21)
 - [#22: real-device mobile compatibility, memory, and battery matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/22)

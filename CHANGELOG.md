@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Synthetic 21-note relevance corpus, deterministic hybrid fixtures, P@10/recall@10/MRR scorecard, and exact constraint regressions.
+- Desktop-only, consent-first model asset manager with pinned manifests, bounded downloads, SHA-256 verification, atomic staging, progress, cancellation, retry, re-verification, and scoped deletion. This prepares—but does not enable—the on-device semantic experiment.
 
 ## [0.1.0] - 2026-09-13
 

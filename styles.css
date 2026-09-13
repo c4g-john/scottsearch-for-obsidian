@@ -292,6 +292,49 @@ button.scottsearch-result:focus-visible {
   line-height: 1.55;
 }
 
+.scottsearch-model-intro,
+.scottsearch-model-caution,
+.scottsearch-model-progress-text {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.scottsearch-model-summary {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.scottsearch-model-summary-row {
+  display: grid;
+  gap: 4px 12px;
+  grid-template-columns: minmax(80px, 0.35fr) minmax(0, 1fr);
+}
+
+.scottsearch-model-summary-row span {
+  color: var(--text-muted);
+}
+
+.scottsearch-model-caution,
+.scottsearch-model-warning {
+  border-inline-start: 3px solid var(--color-orange);
+  padding-inline-start: 12px;
+}
+
+.scottsearch-model-warning {
+  color: var(--text-error);
+  line-height: 1.5;
+}
+
+.scottsearch-model-progress {
+  inline-size: 100%;
+  margin-top: 12px;
+}
+
 @media (max-width: 420px) {
   .scottsearch-header {
     padding: 14px 12px 10px;
