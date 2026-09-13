@@ -12,7 +12,7 @@ ScottSearch reads notes to build its search index. It does not change note conte
 
 ## The test pass
 
-Use whichever desktop and mobile devices are available to you. It is helpful—not required—to mention the device, operating system, Obsidian version, approximate note count, and theme in your report.
+Use whichever desktop and mobile devices are available to you. The friendly test-report form asks for the operating system, Obsidian version, approximate note count, and theme without asking for private vault details.
 
 ### 1. Find a remembered idea
 
@@ -121,6 +121,8 @@ A good report can be only three sentences:
 2. What you expected.
 3. What happened instead.
 
+Use the [beta test report](https://github.com/c4g-john/scottsearch-for-obsidian/issues/new?template=beta_test_report.yml) after any test pass—even when everything worked. The form collects approximate platform, theme, vault-size, and timing evidence for the release decision, and every timing question allows **Not measured**.
+
 Use the [bug form](https://github.com/c4g-john/scottsearch-for-obsidian/issues/new?template=bug_report.yml) when something appears broken. Use the [product requirement form](https://github.com/c4g-john/scottsearch-for-obsidian/issues/new?template=product_requirement.yml) when ScottSearch needs to support a new outcome.
 
-Both forms are public. Replace private examples before submitting.
+All three forms are public. Replace private examples before submitting.

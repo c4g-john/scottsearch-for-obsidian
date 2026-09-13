@@ -1,0 +1,168 @@
+name: Beta test report
+description: Share a successful, mixed, or blocked ScottSearch test pass—no coding knowledge needed.
+title: "[Beta]: "
+labels:
+  - "beta report"
+  - "needs-triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing ScottSearch. Successful passes are just as useful as problems: they help us understand which versions, devices, themes, and vault sizes are ready.
+
+        **This report will be public.** Do not paste note text, vault or computer paths, credentials, personal names, or private screenshots. Approximate answers are welcome, and every timing question includes **Not measured**.
+
+        The friendly checklist is at https://c4g-john.github.io/scottsearch-for-obsidian/#test.
+
+  - type: dropdown
+    id: overall-result
+    attributes:
+      label: Overall result
+      description: Which description fits this test pass best?
+      options:
+        - Everything I tried worked
+        - Mostly worked, with something confusing
+        - I found behavior that may be a bug
+        - I could not finish the checklist
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: ScottSearch and Obsidian versions
+      description: Find ScottSearch under Community plugins and the Obsidian version under About.
+      placeholder: ScottSearch 0.1.0; Obsidian 1.x.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform tested
+      description: Select every platform included in this report.
+      multiple: true
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - iPhone or iPad
+        - Android phone or tablet
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: Operating-system version
+      description: A broad version is enough. Do not include device names that reveal your identity.
+      placeholder: macOS 15, Windows 11, Ubuntu 24.04, iOS 19, or Android 16
+    validations:
+      required: true
+
+  - type: input
+    id: theme
+    attributes:
+      label: Obsidian theme
+      description: Enter Default if you did not install another theme.
+      placeholder: Default
+    validations:
+      required: true
+
+  - type: dropdown
+    id: vault-scale
+    attributes:
+      label: Approximate number of notes
+      description: Choose a range—never share a vault name or full path.
+      options:
+        - Under 100 notes
+        - 100–999 notes
+        - 1,000–9,999 notes
+        - 10,000–49,999 notes
+        - 50,000 or more notes
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: search-mode
+    attributes:
+      label: Search mode tested
+      multiple: true
+      options:
+        - Wording search (semantic ranking off)
+        - Semantic ranking with Ollama
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist-sections
+    attributes:
+      label: What did you try?
+      description: Select every part you exercised. One section is still a useful report.
+      options:
+        - label: Find a remembered idea
+        - label: Exact phrases, exclusions, tags, paths, or dates
+        - label: Sort and filter results
+        - label: Keyboard navigation
+        - label: Optional Ollama semantic ranking and fallback
+        - label: Narrow panes, another theme, or mobile layout
+        - label: Create, edit, rename, and delete a fictional note
+        - label: Disable, re-enable, or uninstall ScottSearch
+    validations:
+      required: true
+
+  - type: dropdown
+    id: indexing-time
+    attributes:
+      label: Approximate initial indexing time
+      description: A rough observation is enough; do not use special measurement tools.
+      options:
+        - Not measured
+        - Under 1 second
+        - 1–5 seconds
+        - 5–30 seconds
+        - 30 seconds–2 minutes
+        - More than 2 minutes
+        - It did not finish
+    validations:
+      required: true
+
+  - type: dropdown
+    id: response-time
+    attributes:
+      label: Typical time until the top ten results appeared
+      description: Choose the closest range after trying a few searches.
+      options:
+        - Not measured
+        - Under half a second
+        - About half a second–1 second
+        - 1–2 seconds
+        - More than 2 seconds
+        - Results did not appear
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What worked, and what happened differently than expected?
+      description: A few plain-language sentences are enough. Use fictional examples if you describe a note or query.
+      placeholder: I tried… I expected… What happened was…
+    validations:
+      required: true
+
+  - type: textarea
+    id: confusing
+    attributes:
+      label: Was anything confusing or hard to find?
+      description: Optional. Setup and wording feedback is useful even when the feature worked.
+
+  - type: checkboxes
+    id: public-content
+    attributes:
+      label: Public-content acknowledgement
+      options:
+        - label: I confirm that this report contains no private note text, vault or computer paths, credentials, personal information, or confidential screenshots.
+          required: true
