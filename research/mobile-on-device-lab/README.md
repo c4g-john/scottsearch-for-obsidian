@@ -22,6 +22,7 @@ npm run build
 npm run build:mobile-lab
 git rev-parse HEAD
 shasum -a 256 research/mobile-on-device-lab/dist/main.js
+cat research/mobile-on-device-lab/dist/EXPECTED_SHA256
 ~~~
 
 The command writes only:
@@ -32,6 +33,7 @@ research/mobile-on-device-lab/dist/
   manifest.json
   styles.css
   SAFETY_NOTICE.md
+  EXPECTED_SHA256
 ~~~
 
 The generated directory is ignored by Git. The audit fails unless:
@@ -42,7 +44,10 @@ The generated directory is ignored by Git. The audit fails unless:
   warning are present;
 - no bundled Node or Electron import exists;
 - the normal root main.js still contains none of the lab/runtime/model markers.
+- the generated main.js matches the repository's reviewed EXPECTED_SHA256.
 
+The runtime is compressed by the exact pinned fflate version rather than the
+host's zlib, so macOS and Linux builders must produce the same reviewed bytes.
 Record the commit and printed SHA-256 in every device report. A tester should
 reject an artifact whose digest is missing or different.
 

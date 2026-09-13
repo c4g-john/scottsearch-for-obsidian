@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
-import { gzipSync } from 'node:zlib';
+import { gzipSync } from 'fflate';
 
 const mode = process.argv[2] ?? 'development-experiment';
 const mobileLab = mode === 'mobile-lab';
@@ -43,7 +43,7 @@ if (includeOnDeviceExperiment) {
   if (runtimeDigest !== reviewedRuntimeDigest || runtimeGlueDigest !== reviewedRuntimeGlueDigest) {
     throw new Error(`Refusing to bundle unreviewed ONNX Runtime Web bytes: ${runtimeDigest}/${runtimeGlueDigest}.`);
   }
-  const runtimeGzipBase64 = gzipSync(runtimeBytes, { level: 9 }).toString('base64');
+  const runtimeGzipBase64 = Buffer.from(gzipSync(runtimeBytes, { level: 9, mtime: 0 })).toString('base64');
 
   const runtimeLicense = `/*!
 ONNX Runtime Web 1.29.0
@@ -194,6 +194,7 @@ if (production) {
     }, null, 2)}\n`);
     copyFileSync('styles.css', `${mobileLabDirectory}/styles.css`);
     copyFileSync('research/mobile-on-device-lab/README.md', `${mobileLabDirectory}/SAFETY_NOTICE.md`);
+    copyFileSync('research/mobile-on-device-lab/EXPECTED_SHA256', `${mobileLabDirectory}/EXPECTED_SHA256`);
     console.log(`Wrote the non-public mobile lab to ${mobileLabDirectory}.`);
   }
 } else {
