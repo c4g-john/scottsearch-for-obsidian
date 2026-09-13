@@ -10,11 +10,14 @@ export interface ScottSearchSettings {
   ignoredFolders: string[];
   maxFileSizeKb: number;
   semanticEnabled: boolean;
+  semanticProvider: SemanticProviderId;
   ollamaEndpoint: string;
   ollamaModel: string;
   semanticWeight: number;
   embeddingBatchSize: number;
 }
+
+export type SemanticProviderId = 'ollama' | 'on-device';
 
 export const DEFAULT_SETTINGS: ScottSearchSettings = {
   embeddingBatchSize: 8,
@@ -25,6 +28,7 @@ export const DEFAULT_SETTINGS: ScottSearchSettings = {
   resultLimit: 10,
   searchDelayMs: 650,
   semanticEnabled: false,
+  semanticProvider: 'ollama',
   semanticWeight: 0.78,
 };
 
@@ -95,8 +99,27 @@ export class ScottSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Local semantic search').setHeading();
     containerEl.createEl('p', {
       cls: 'setting-item-description',
-      text: 'When enabled, note text is sent only to the Ollama endpoint below. The default endpoint stays on this device.',
+      text: 'Choose whether meaning is calculated by your Ollama endpoint or, on desktop, inside an experimental ScottSearch worker.',
     });
+
+    const providerSetting = new Setting(containerEl)
+      .setName('Semantic provider')
+      .setDesc('Existing installations stay on Ollama unless you explicitly choose the experiment.')
+      .addDropdown((dropdown) => {
+        dropdown.addOption('ollama', 'Ollama (local endpoint)');
+        if (Platform.isDesktopApp) dropdown.addOption('on-device', 'On-device model (experimental)');
+        dropdown
+          .setValue(this.plugin.settings.semanticProvider)
+          .onChange(async (value) => {
+            this.plugin.settings.semanticProvider = value as SemanticProviderId;
+            await this.plugin.savePluginData();
+            this.display();
+            await this.plugin.semanticConfigurationChanged();
+          });
+      });
+    if (!Platform.isDesktopApp && this.plugin.settings.semanticProvider === 'on-device') {
+      providerSetting.setDesc('The saved on-device experiment is unavailable on mobile. Search will use lexical ranking until you choose Ollama.');
+    }
 
     new Setting(containerEl)
       .setName('Enable semantic ranking')
@@ -107,13 +130,13 @@ export class ScottSearchSettingTab extends PluginSettingTab {
           this.plugin.settings.semanticEnabled = value;
           await this.plugin.savePluginData();
           this.display();
-          if (value) void this.plugin.rebuildSemanticIndex();
+          await this.plugin.semanticToggleChanged(value);
         }));
 
     new Setting(containerEl)
       .setName('Ollama endpoint')
       .setDesc('Local or explicitly trusted base URL. ScottSearch calls its /api/embed endpoint.')
-      .setDisabled(!this.plugin.settings.semanticEnabled)
+      .setDisabled(!this.plugin.settings.semanticEnabled || this.plugin.settings.semanticProvider !== 'ollama')
       .addText((text) => text
         .setPlaceholder('http://localhost:11434')
         .setValue(this.plugin.settings.ollamaEndpoint)
@@ -125,7 +148,7 @@ export class ScottSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Embedding model')
       .setDesc('The Ollama model used for both notes and queries.')
-      .setDisabled(!this.plugin.settings.semanticEnabled)
+      .setDisabled(!this.plugin.settings.semanticEnabled || this.plugin.settings.semanticProvider !== 'ollama')
       .addText((text) => text
         .setPlaceholder('embeddinggemma')
         .setValue(this.plugin.settings.ollamaModel)
@@ -156,7 +179,7 @@ export class ScottSearchSettingTab extends PluginSettingTab {
     } else {
       containerEl.createEl('p', {
         cls: 'setting-item-description',
-        text: 'Prepare verified model files for a future desktop-only experiment. This does not enable a new search mode or send note text anywhere.',
+        text: 'Download the reviewed model, then choose “On-device model” above to calculate meaning in a background worker. Note text never leaves Obsidian in this mode.',
       });
       const modelSetting = new Setting(containerEl)
         .setName('Experimental model files')
@@ -166,7 +189,10 @@ export class ScottSearchSettingTab extends PluginSettingTab {
         button
           .setButtonText(actionButtonText)
           .onClick(() => {
-            new ModelAssetManagerModal(this.app, this.plugin.modelAssetManager, () => this.display()).open();
+            new ModelAssetManagerModal(this.app, this.plugin.modelAssetManager, () => {
+              this.plugin.modelAssetsChanged();
+              this.display();
+            }).open();
           });
         void this.plugin.modelAssetManager.getStatus(false).then((status) => {
           if (!modelSetting.settingEl.isConnected) return;
@@ -203,7 +229,7 @@ export class ScottSearchSettingTab extends PluginSettingTab {
 
 function describeModelAssets(status: ModelAssetStatus, expectedBytes: number): string {
   if (status.state === 'ready') {
-    return `${formatModelBytes(status.diskBytes)} on disk and verified when downloaded. Search still uses your current lexical or Ollama setting.`;
+    return `${formatModelBytes(status.diskBytes)} on disk and verified. Choose the experimental provider above when you are ready to test it.`;
   }
   if (status.state === 'invalid') {
     return `${formatModelBytes(status.diskBytes)} of existing files need repair before use. ${status.reason ?? ''}`.trim();

@@ -2,7 +2,7 @@
 
 ScottSearch is deliberate search for [Obsidian](https://obsidian.md). It trades a wall of instant textual matches for a short, ranked set of notes that better reflects what you meant.
 
-The plugin combines a strong local lexical ranker with optional semantic embeddings from [Ollama](https://ollama.com). Power-user constraints stay explicit, results stay sortable and filterable, and lexical search keeps working when the embedding service is unavailable.
+The plugin combines a strong local lexical ranker with optional semantic embeddings from [Ollama](https://ollama.com). An unreleased desktop experiment can instead calculate embeddings inside an isolated on-device worker. Power-user constraints stay explicit, results stay sortable and filterable, and lexical search keeps working when a semantic provider is unavailable.
 
 > ScottSearch 0.1 is available as a human-testing pre-release. It has not yet been accepted into Obsidian's community plugin directory, so testers install it with BRAT or the release ZIP.
 
@@ -12,7 +12,7 @@ Visit the [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-
 
 - Returns 10 relevance-ranked results by default instead of every occurrence.
 - Uses BM25-style content relevance with title, path, tag, exact-phrase, and recency signals.
-- Optionally reranks by semantic similarity using a local Ollama embedding model.
+- Optionally reranks by semantic similarity using local Ollama or the explicitly enabled desktop experiment.
 - Supports required terms, exact phrases, exclusions, metadata filters, and file-date predicates.
 - Sorts by relevance, created date, modified date, or filename.
 - Filters an existing result set by folder, tag, or recent modification without recomputing embeddings.
@@ -66,19 +66,20 @@ The default endpoint is `http://localhost:11434`. You can choose another Ollama 
 
 If Ollama is stopped, the model is missing, or the response is invalid, the search view explains the fallback and continues with lexical ranking.
 
-## Experimental on-device model files
+## Experimental on-device semantic search
 
-The unreleased development branch contains the consent and integrity foundation for a future desktop-only embedded model. It does **not** add an on-device search mode yet; [the separate worker experiment](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21) remains planned.
+The unreleased development branch contains a working desktop-only prototype. It is not part of the 0.1.0 download, is off by default, and remains blocked from a testing release until the [macOS, Windows, and Linux Obsidian matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21) is complete.
 
-On desktop, **Settings → ScottSearch → On-device model experiment** lets an interested tester review a 23.7 MB Snowflake Arctic Embed XS download. Nothing downloads until a second explicit confirmation. Every required file is pinned to an immutable revision, limited to an exact size, verified with SHA-256 in staging, and activated only after the whole set passes. The dialog supports progress, cancellation, retry, re-verification, and safe removal.
+On desktop, **Settings → ScottSearch → On-device model experiment** lets an interested development tester review a 23.7 MB Snowflake Arctic Embed XS download. Nothing downloads until a second explicit confirmation. Every required file is pinned to an immutable revision, limited to an exact size, verified with SHA-256 in staging, and activated only after the whole set passes. Choosing **On-device model (experimental)** then performs model loading, tokenization, note chunking, and inference in a dedicated worker.
 
-The download contains model data, does not read or upload notes, and does not update plugin code. Mobile controls stay disabled until the [mobile compatibility, memory, heat, and battery matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/22) is complete. See the [plain-language model file and safety guide](docs/MODEL_ASSETS.md) and the [measured research decision](docs/research/on-device-embeddings.md).
+The model download contains data, does not read or upload notes, and does not update plugin code. When the provider is enabled, note text and model inference stay inside Obsidian; only normalized embedding vectors are cached in ScottSearch's plugin data. Indexing can be stopped by disabling semantic ranking, and lexical search remains available during failures. Mobile controls stay disabled until the [mobile compatibility, memory, heat, and battery matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/22) is complete. See the [plain-language model and privacy guide](docs/MODEL_ASSETS.md), [human-testing steps](docs/HUMAN_TESTING.md), and [measured research decision](docs/research/on-device-embeddings.md).
 
 ## Privacy
 
 - Lexical indexing happens inside Obsidian.
 - Semantic search is disabled until you enable it.
-- When enabled, text is sent only to the Ollama endpoint shown in settings.
+- With Ollama selected, text is sent only to the endpoint shown in settings.
+- With the unreleased on-device experiment selected, text is processed in a dedicated worker inside Obsidian and is not uploaded.
 - The default endpoint is on the same device and needs no secret.
 - The optional experimental model download never starts without a separate confirmation and never contains note text.
 - ScottSearch does not include analytics or telemetry.

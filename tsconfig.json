@@ -7,7 +7,7 @@
     "isolatedModules": true,
     "lib": ["DOM", "DOM.Iterable", "ES2021"],
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,

@@ -35,7 +35,7 @@ export class ModelAssetManagerModal extends Modal {
   private async renderOverview(): Promise<void> {
     this.contentEl.empty();
     const intro = this.contentEl.createEl('p', {
-      text: 'These experimental files prepare a future desktop-only semantic mode. Downloading them does not change search yet.',
+      text: 'These files power ScottSearch’s optional desktop-only semantic experiment. Downloading them does not turn the experiment on.',
     });
     intro.addClass('scottsearch-model-intro');
 
@@ -43,7 +43,7 @@ export class ModelAssetManagerModal extends Modal {
     addSummaryRow(summary, 'Model', this.manager.manifest.displayName);
     addSummaryRow(summary, 'Download', formatModelBytes(this.manager.totalBytes));
     addSummaryRow(summary, 'Storage', `About ${formatModelBytes(this.manager.totalBytes)}`);
-    addSummaryRow(summary, 'Privacy', 'The model stays on this device. No note text is sent by this download.');
+    addSummaryRow(summary, 'Privacy', 'The model and semantic processing stay on this device. No note text is uploaded.');
     addSummaryRow(summary, 'License', this.manager.manifest.license.name);
     summary.createEl('a', {
       attr: { href: this.manager.manifest.license.url, rel: 'noopener', target: '_blank' },
@@ -172,7 +172,7 @@ export class ModelAssetManagerModal extends Modal {
       this.contentEl.empty();
       this.contentEl.createEl('h3', { text: 'Download complete' });
       this.contentEl.createEl('p', {
-        text: `${formatModelBytes(status.installedBytes)} passed every integrity check. Search behavior has not changed.`,
+        text: `${formatModelBytes(status.installedBytes)} passed every integrity check. Choose the experimental provider in ScottSearch settings to use it.`,
       });
       new Setting(this.contentEl)
         .addButton((button) => button

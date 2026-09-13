@@ -9,7 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Synthetic 21-note relevance corpus, deterministic hybrid fixtures, P@10/recall@10/MRR scorecard, and exact constraint regressions.
-- Desktop-only, consent-first model asset manager with pinned manifests, bounded downloads, SHA-256 verification, atomic staging, progress, cancellation, retry, re-verification, and scoped deletion. This prepares—but does not enable—the on-device semantic experiment.
+- Desktop-only, consent-first model asset manager with pinned manifests, bounded downloads, SHA-256 verification, atomic staging, progress, cancellation, retry, re-verification, and scoped deletion.
+- Experimental desktop semantic provider using Snowflake Arctic Embed XS int8 in a dedicated worker, with lazy verified loading, in-worker tokenization and bounded note chunking, CLS pooling, normalized 384-dimensional embeddings, cancellation, disposal, and lexical fallback.
+- Reproducible exact-worker benchmark and runtime asset audit for the on-device prototype. Cross-platform Obsidian measurements remain a release gate.
 
 ## [0.1.0] - 2026-09-13
 

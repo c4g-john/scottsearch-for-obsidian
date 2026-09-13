@@ -3,6 +3,7 @@ import {
   MarkdownView,
   Notice,
   normalizePath,
+  Platform,
   Plugin,
   TFile,
   type TAbstractFile,
@@ -12,6 +13,7 @@ import { OllamaEmbeddingProvider } from './ollama-provider';
 import { ARCTIC_EMBED_XS_INT8 } from './model-assets/manifest';
 import { ObsidianModelAssetStore } from './model-assets/obsidian-store';
 import { VerifiedModelAssetManager } from './model-assets/verified-model-manager';
+import { OnDeviceEmbeddingProvider } from './on-device/provider';
 import { parseQuery } from './query';
 import {
   RankedSearchIndex,
@@ -22,6 +24,7 @@ import {
 import { ScottSearchView, VIEW_TYPE_SCOTTSEARCH } from './search-view';
 import {
   SemanticIndex,
+  type EmbeddingProvider,
   type SerializedEmbeddingCache,
 } from './semantic-index';
 import {
@@ -66,7 +69,9 @@ export default class ScottSearchPlugin extends Plugin {
   private readonly semanticQueryCache = new Map<string, Map<string, number>>();
   private indexGeneration = 0;
   private semanticGeneration = 0;
+  private semanticAbortController?: AbortController;
   private semanticUpdateTimer?: number;
+  private onDeviceProvider?: OnDeviceEmbeddingProvider;
   private saveQueue: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
@@ -111,6 +116,9 @@ export default class ScottSearchPlugin extends Plugin {
   onunload(): void {
     this.indexGeneration += 1;
     this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.disposeOnDeviceProvider();
     for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
     if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
     this.modelAssetManager.cancelInstall();
@@ -175,6 +183,8 @@ export default class ScottSearchPlugin extends Plugin {
   async rebuildIndex(): Promise<void> {
     const generation = ++this.indexGeneration;
     this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
     this.lexicalIndex.clear();
     this.semanticQueryCache.clear();
 
@@ -200,6 +210,9 @@ export default class ScottSearchPlugin extends Plugin {
       return;
     }
 
+    this.semanticAbortController?.abort();
+    const controller = new AbortController();
+    this.semanticAbortController = controller;
     const generation = ++this.semanticGeneration;
     this.semanticQueryCache.clear();
     this.setStatus({ ...this.status, lastError: undefined, phase: 'semantic' });
@@ -213,6 +226,7 @@ export default class ScottSearchPlugin extends Plugin {
             this.setStatus({ ...this.status, semanticFiles: completed });
           }
         },
+        controller.signal,
       );
       if (generation !== this.semanticGeneration) return;
       this.persistedEmbeddings = this.semanticIndex.serialize();
@@ -221,17 +235,55 @@ export default class ScottSearchPlugin extends Plugin {
     } catch (error) {
       if (generation !== this.semanticGeneration) return;
       this.setStatus({ ...this.status, lastError: readableError(error), phase: 'ready' });
+    } finally {
+      if (this.semanticAbortController === controller) this.semanticAbortController = undefined;
     }
   }
 
   async clearEmbeddingCache(): Promise<void> {
     this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.disposeOnDeviceProvider();
     this.semanticIndex.clear();
     this.persistedEmbeddings = {};
     this.semanticQueryCache.clear();
     this.setStatus({ ...this.status, lastError: undefined, semanticFiles: 0 });
     await this.savePluginData();
     new Notice('ScottSearch embedding cache cleared.');
+  }
+
+  async semanticToggleChanged(enabled: boolean): Promise<void> {
+    this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.semanticQueryCache.clear();
+    if (!enabled) {
+      this.disposeOnDeviceProvider();
+      this.setStatus({ ...this.status, lastError: undefined, phase: 'ready' });
+      return;
+    }
+    await this.rebuildSemanticIndex();
+  }
+
+  async semanticConfigurationChanged(): Promise<void> {
+    this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.disposeOnDeviceProvider();
+    this.semanticQueryCache.clear();
+    if (this.settings.semanticEnabled) await this.rebuildSemanticIndex();
+  }
+
+  modelAssetsChanged(): void {
+    this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.disposeOnDeviceProvider();
+    this.semanticQueryCache.clear();
+    if (this.settings.semanticEnabled && this.settings.semanticProvider === 'on-device') {
+      void this.rebuildSemanticIndex();
+    }
   }
 
   subscribeToStatus(listener: (status: IndexStatus) => void): () => void {
@@ -263,8 +315,22 @@ export default class ScottSearchPlugin extends Plugin {
     this.status.semanticFiles = this.semanticIndex.size;
   }
 
-  private createEmbeddingProvider(): OllamaEmbeddingProvider {
+  private createEmbeddingProvider(): EmbeddingProvider {
+    if (this.settings.semanticProvider === 'on-device') {
+      if (!Platform.isDesktopApp) {
+        throw new Error('The experimental on-device model is available only in Obsidian for desktop.');
+      }
+      if (!this.onDeviceProvider || this.onDeviceProvider.isDisposed) {
+        this.onDeviceProvider = new OnDeviceEmbeddingProvider(this.modelAssetManager);
+      }
+      return this.onDeviceProvider;
+    }
     return new OllamaEmbeddingProvider(this.settings.ollamaEndpoint, this.settings.ollamaModel);
+  }
+
+  private disposeOnDeviceProvider(): void {
+    this.onDeviceProvider?.dispose();
+    this.onDeviceProvider = undefined;
   }
 
   private async indexFile(file: TFile): Promise<void> {

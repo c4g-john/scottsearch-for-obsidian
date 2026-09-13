@@ -1,15 +1,15 @@
 # On-device model files
 
-ScottSearch's development branch includes a guarded download manager for a future desktop-only on-device semantic experiment. The model is **not used for search yet**. Ollama remains the supported semantic provider, and lexical search still needs no model or network access.
+ScottSearch's development branch includes a guarded download manager and a working desktop-only semantic prototype. The prototype is **off by default and not included in the 0.1.0 human-testing release**. Ollama remains available, and lexical search still needs no model or network access.
 
 ## What happens—and what does not
 
 - Opening Obsidian, opening ScottSearch, and opening Settings make no model network request.
 - On desktop, **Settings → ScottSearch → On-device model experiment** opens a review screen.
-- The screen shows the model, provider, license, download size, storage size, privacy boundary, and expected future CPU/battery cost.
+- The screen shows the model, provider, license, download size, storage size, privacy boundary, and expected CPU/battery cost.
 - A second, explicit confirmation starts the download.
 - The download contains model data and tokenizer configuration. It never installs or updates plugin code.
-- This download does not read, process, or upload notes.
+- This download does not read, process, or upload notes. Note processing begins only if semantic ranking and the on-device provider are separately enabled.
 - Mobile download controls remain unavailable until [the real-device test matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/22) reaches a positive decision.
 
 ## Reviewed manifest
@@ -41,13 +41,26 @@ ScottSearch treats upstream bytes as untrusted until all checks pass:
 6. Only after all files pass does one directory rename expose the completed model directory.
 7. Cancellation, network loss, size mismatch, hash mismatch, or storage failure removes the staging directory. A partial model never becomes ready.
 
-The manager can re-read and re-hash every installed artifact before a runtime uses it. The worker provider tracked in [issue #21](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21) must perform that full check before loading a model.
+The worker provider re-reads every artifact and verifies the exact buffers it will use, avoiding a check-then-read gap. It then transfers the verified model buffer into a dedicated worker. A missing or changed artifact is rejected and search visibly falls back to lexical ranking.
+
+## What happens when the experiment is enabled
+
+- The model is not read, decompressed, or initialized at plugin startup. The first semantic indexing or query request loads it lazily.
+- The release contains a reviewed browser-only ONNX Runtime Web engine. The model download can never replace or update that executable code.
+- Tokenization, bounded long-note chunking, model inference, CLS pooling, and vector normalization happen in the worker rather than the Obsidian UI thread.
+- Each document uses at most 12 chunks of 510 content tokens plus the model's CLS and SEP tokens. Chunk vectors are normalized, averaged, and normalized again into one 384-dimensional note vector.
+- Queries use the model's required `Represent this sentence for searching relevant passages: ` prefix and the same CLS pooling and normalization.
+- Normalized vectors are cached in ScottSearch's `data.json`; raw note text and model inputs are not written to that cache.
+- Disabling semantic ranking, changing providers, clearing the cache, or unloading the plugin terminates the worker and cancels pending work. The next use starts a fresh verified worker.
+- During initialization, cancellation, corruption, or runtime errors, wording search remains usable and the search view explains the semantic fallback.
+
+The experimental worker is unavailable on phones and tablets. The rest of ScottSearch remains cross-platform.
 
 ## Cancel, retry, verify, and remove
 
 The manager shows total progress and which required file is downloading or being verified. Closing the dialog or choosing **Cancel download** aborts the request and removes incomplete files. A later retry begins from a clean staging directory.
 
-After installation, **Verify again** re-hashes every local file. **Remove model files** asks for confirmation, then removes only the dedicated `model-assets` directory. It does not delete or edit notes, lexical data, cached Ollama embeddings, the Ollama endpoint, or other ScottSearch settings.
+After installation, **Verify again** re-hashes every local file. **Remove model files** asks for confirmation, stops the active on-device worker, then removes only the dedicated `model-assets` directory. It does not delete or edit notes, lexical data, cached Ollama embeddings, the Ollama endpoint, or other ScottSearch settings. If the removed provider remains selected, searches use lexical fallback until another provider is chosen or the model is downloaded again.
 
 ## Maintainer safety rules
 
@@ -57,5 +70,9 @@ After installation, **Verify again** re-hashes every local file. **Remove model 
 - Never write model data into the notes area or serialize it into `data.json`.
 - Never log note content, model request bodies, or raw vault paths from this subsystem.
 - Keep the model runtime separate from this manager. Model files are data; executable runtime code must pass normal dependency, review, CI, and release controls.
+
+The exact runtime files, hashes, dependency audit, and licenses are recorded in
+[`runtime-bundle-audit.json`](../research/on-device-embeddings/results/runtime-bundle-audit.json)
+and [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
 
 Run `npm run check` before changing the manifest or manager. The test suite covers opt-in behavior, manifest validation, bounded responses, size and digest mismatch, interruption, cancellation, retry, staging/activation, later corruption, deletion scope, and storage failure.

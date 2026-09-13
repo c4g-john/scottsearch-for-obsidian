@@ -66,6 +66,8 @@ export interface ModelAssetStatus {
   reason?: string;
 }
 
+export type VerifiedModelArtifacts = ReadonlyMap<string, ArrayBuffer>;
+
 interface InstalledMarker {
   schemaVersion: number;
   fingerprint: string;
@@ -177,6 +179,41 @@ export class VerifiedModelAssetManager {
 
   cancelInstall(): void {
     this.operation?.controller.abort();
+  }
+
+  /**
+   * Reads the exact bytes used by the inference worker and verifies those same
+   * buffers before returning them. This avoids a check-then-read race and never
+   * performs a network request.
+   */
+  async readVerifiedArtifacts(): Promise<VerifiedModelArtifacts> {
+    const marker = await this.readMarker();
+    if (!marker || marker.fingerprint !== manifestFingerprint(this.manifest)) {
+      throw new ModelAssetManagerError(
+        'integrity',
+        'The experimental model is not installed or does not match this ScottSearch release.',
+      );
+    }
+
+    const artifacts = new Map<string, ArrayBuffer>();
+    for (const asset of this.manifest.artifacts) {
+      const path = joinPath(this.modelDirectory, asset.path);
+      const size = await this.store.size(path);
+      if (size !== asset.bytes) {
+        throw new ModelAssetManagerError('integrity', `${asset.path} is missing or has the wrong size.`);
+      }
+      let data: ArrayBuffer;
+      try {
+        data = await this.store.readBinary(path);
+      } catch (error) {
+        throw new ModelAssetManagerError('storage', `Unable to read ${asset.path}: ${readableError(error)}`);
+      }
+      if (data.byteLength !== asset.bytes || await sha256Hex(data) !== asset.sha256) {
+        throw new ModelAssetManagerError('integrity', `${asset.path} failed its integrity check.`);
+      }
+      artifacts.set(asset.path, data);
+    }
+    return artifacts;
   }
 
   async removeAll(): Promise<void> {

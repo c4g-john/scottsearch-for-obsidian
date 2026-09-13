@@ -17,6 +17,11 @@ Then open one of these URLs:
 - `http://127.0.0.1:4174/research/on-device-embeddings/browser/?candidate=arctic-xs&run=cold`
 - `http://127.0.0.1:4174/research/on-device-embeddings/browser/?candidate=mxbai-xsmall&run=cold`
 
+To exercise the exact worker and embedded ONNX Runtime bytes used by the plugin,
+run `npm run build:worker-harness`, place the reviewed model fixture under the
+ignored `research/on-device-embeddings/dist/model/` directory, and open
+`http://127.0.0.1:4174/research/on-device-embeddings/browser/worker-index.html?run=local`.
+
 Reload the same candidate with `run=warm` to measure its browser cache. Do not compare cold download time across networks as if it were model inference time. Build output, dependencies, and model caches are ignored.
 
 `benchmark.mjs` remains as a documented negative integration test. A browser-build import under Node downloads the model but fails at the browser/Node resource boundary; run it with `npm run benchmark:node-proxy` only when investigating that upstream behavior.

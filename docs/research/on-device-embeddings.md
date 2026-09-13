@@ -1,6 +1,6 @@
 # On-device embeddings: measured recommendation
 
-Status: research complete on 2026-09-13 for [issue #10](https://github.com/c4g-john/scottsearch-for-obsidian/issues/10).
+Status: candidate research complete for [issue #10](https://github.com/c4g-john/scottsearch-for-obsidian/issues/10); guarded worker prototype in progress in [issue #21](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21).
 
 ## Decision
 
@@ -24,6 +24,28 @@ The heap number is deliberately described as a lower bound: Chromium's `performa
 Both candidates matched the synthetic benchmark's existing hybrid result: macro MRR 1.00, precision@10 0.26, and recall@10 1.00. That is an encouraging regression result, not proof about a large personal vault. Arctic is the first experiment candidate because it is smaller, Apache-2.0 licensed, 384-dimensional, and its official card reports a 22.6-million-parameter model and retrieval-focused evaluation. It requires a documented query prefix and CLS pooling. See the [Arctic model card](https://huggingface.co/Snowflake/snowflake-arctic-embed-xs) and [Mixedbread model card](https://huggingface.co/mixedbread-ai/mxbai-embed-xsmall-v1).
 
 Raw summarized measurements live in [`research/on-device-embeddings/results/desktop-chromium-summary.json`](../../research/on-device-embeddings/results/desktop-chromium-summary.json). The small benchmark, candidate revisions, SHA-256 digests, and runner are committed so another contributor can reproduce or challenge the decision.
+
+## Exact worker prototype measurement
+
+The guarded prototype replaces the broad Transformers.js dependency with a
+small reviewed WordPiece tokenizer and one browser-only ONNX Runtime Web entry
+point. The exact generated worker used by the plugin—compressed WASM included—was
+then run in Chromium 151 on macOS against the same relevance corpus and 1,000
+synthetic note copies.
+
+| Exact worker run | Model load | 1,000-note index | Query p50 / p95 | Largest main-thread timer gap | Recall@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Cold | 339 ms | 33.67 s | 9.9 / 10.1 ms | 53.7 ms | 1.00 |
+| Warm | 287 ms | 33.74 s | 9.7 / 10.5 ms | 17.1 ms | 1.00 |
+
+The warm cancellation probe terminated the worker and returned control within
+the benchmark clock's sub-millisecond resolution. This proves that the exact
+worker bundle can load, tokenize, chunk, infer, cancel, and preserve main-thread
+responsiveness in the measured Chromium renderer. It does **not** satisfy the
+macOS/Windows/Linux Obsidian matrix or peak-process-memory requirement. Those
+remain explicit open gates; `performance.memory` omits some WASM/native memory.
+The raw result and limitations are in
+[`plugin-worker-macos-chromium.json`](../../research/on-device-embeddings/results/plugin-worker-macos-chromium.json).
 
 ## Platform findings
 
@@ -49,9 +71,30 @@ Transformers.js's model registry can expose file sizes, download progress, cache
 
 ## Dependency and packaging gate
 
-The isolated package install is not acceptable as a production dependency today. `npm audit` reported four high-severity findings with no automatic fix through `onnxruntime-node`, `adm-zip`, and `sharp`. Those Node/image paths are not needed by the browser experiment and should tree-shake out of its bundle, but a red direct dependency audit is still a maintenance and supply-chain problem. The experiment must either use an upstream release with a clean relevant dependency graph or produce a narrowly scoped, reproducible browser-only bundle whose contents and licenses are reviewed.
+The original broad Transformers.js spike remains unsuitable as a shipped
+dependency because its isolated install pulled unnecessary Node and image paths
+with four high-severity advisories. The prototype instead pins
+`onnxruntime-web@1.29.0` directly and implements the reviewed BERT WordPiece
+tokenization contract in ScottSearch. On 2026-09-13, `npm audit --omit=dev`
+reported zero vulnerabilities across the resulting production graph.
 
-Shipping the full `onnxruntime-web` package is also wasteful: its unpacked development package is about 130 MB because it contains several backend variants. A release should include one reviewed runtime path, load it lazily in a worker, and keep it out of Obsidian startup.
+The build rejects changed runtime bytes and changed dependency inputs. The only
+third-party worker module is `ort.wasm.bundle.min.mjs` (72,894 bytes, SHA-256
+`7a3913dc5c7a9c3ad1144f5fbfecd402bc5013bcc886bc67664b18d8a15ab298`),
+paired with one WASM binary (13,961,845 bytes, SHA-256
+`ec8580a9d7b9476ceee52e10a7f94124e4dc71a019d666ed6d4726697c109a4d`).
+No Node backend, image library, remote executable, or alternate execution
+provider reaches the worker. The runtime's MIT notice is embedded in `main.js`
+and included in [`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md).
+
+There is a real tradeoff: gzip compression reduces the exact generated worker
+to about 4.84 MB, but Obsidian community installation distributes only the
+standard plugin bundle. The compressed worker is therefore stored as inert text
+inside `main.js`, increasing the whole bundle to about 4.9 MB on every platform.
+The WASM is not decompressed, the model is not read, and the worker is not
+created until the experiment is used. Actual Obsidian startup and mobile bundle
+impact still need measurement before release; the prototype must be rejected or
+repackaged if that cost is unacceptable.
 
 ## Implementation gates
 

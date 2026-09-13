@@ -1,0 +1,34 @@
+{
+  "model": {
+    "type": "WordPiece",
+    "unk_token": "[UNK]",
+    "continuing_subword_prefix": "##",
+    "max_input_chars_per_word": 100,
+    "vocab": {
+      "[PAD]": 0,
+      "[UNK]": 100,
+      "[CLS]": 101,
+      "[SEP]": 102,
+      "!": 999,
+      ",": 1010,
+      "中": 1746,
+      "文": 1861,
+      "world": 2088,
+      "##ly": 2135,
+      "##able": 3085,
+      "test": 3231,
+      "##ff": 4246,
+      "hello": 7592,
+      "cafe": 7668,
+      "reducing": 8161,
+      "##ord": 8551,
+      "overhead": 8964,
+      "coordination": 12016,
+      "una": 14477,
+      "naive": 15743
+    }
+  },
+  "truncation": {
+    "max_length": 512
+  }
+}

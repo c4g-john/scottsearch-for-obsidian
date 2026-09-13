@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-09-13",
+  "scope": "Exact bundled ScottSearch worker in Chromium; this is not the required Obsidian desktop platform matrix.",
+  "configuration": {
+    "model": "Snowflake/snowflake-arctic-embed-xs",
+    "modelRevision": "d8c86521100d3556476a063fc2342036d45c106f",
+    "dtype": "int8",
+    "dimensions": 384,
+    "pooling": "CLS",
+    "normalized": true,
+    "runtime": "onnxruntime-web@1.29.0",
+    "workerBytes": 4840890,
+    "workerSha256": "339880ac8c628d6f45e0342baf3ca45fa399800affc84b26db0f10ac2546af5f"
+  },
+  "environment": {
+    "browser": "Chromium 151.0.0.0",
+    "hardwareConcurrency": 10,
+    "platform": "MacIntel"
+  },
+  "corpus": {
+    "documents": 21,
+    "queries": 5,
+    "syntheticIndexDocuments": 1000
+  },
+  "cold": {
+    "modelLoadMs": 339,
+    "workerInitializationMs": 296.9,
+    "documentEmbeddingMs": 652.4,
+    "thousandNoteIndexMs": 33669.4,
+    "queryP50Ms": 9.9,
+    "queryP95Ms": 10.1,
+    "maxMainTimerGapMs": 53.7,
+    "mainTimerGapsOver100Ms": 0,
+    "reportedMainJsHeapBytes": 4773502
+  },
+  "warm": {
+    "modelLoadMs": 286.8,
+    "workerInitializationMs": 271.6,
+    "documentEmbeddingMs": 653.1,
+    "thousandNoteIndexMs": 33737.8,
+    "queryP50Ms": 9.7,
+    "queryP95Ms": 10.5,
+    "maxMainTimerGapMs": 17.1,
+    "mainTimerGapsOver100Ms": 0,
+    "reportedMainJsHeapBytes": 5671873,
+    "cancellation": {
+      "terminateCallMs": 0,
+      "mainEventLoopRecoveryMs": 0,
+      "resolutionNote": "Both values were below the benchmark clock's measurable resolution."
+    }
+  },
+  "quality": {
+    "macroMrr": 1,
+    "macroPrecisionAt10": 0.26,
+    "macroRecallAt10": 1
+  },
+  "limitations": [
+    "The reported performance.memory value excludes some WASM and native allocations and is not peak process memory.",
+    "Synthetic copies make throughput repeatable but do not represent the language distribution of a personal vault.",
+    "Windows, Linux, and real Obsidian process measurements remain required before issue #21 can close."
+  ]
+}

@@ -62,6 +62,30 @@ If you do not use Ollama, skip this test. Otherwise:
 
 Expected: meaning-based matches improve when Ollama is available. When it is unavailable, ScottSearch explains the fallback and wording search still works.
 
+### 5a. Try the unreleased on-device experiment (development testers only)
+
+Skip this section when using the 0.1.0 release or a phone/tablet. The prototype is
+not yet cleared for a public download. If a maintainer has given you a later
+development build for desktop testing:
+
+1. Connect the computer to power and save other work. Initial indexing uses noticeable CPU and memory.
+2. Open **Settings → ScottSearch → On-device model experiment** and choose **Review model files**.
+3. Review the model name, 23.7 MB download, storage, privacy, and license. Nothing downloads until you confirm on the second screen.
+4. After the files are ready, choose **On-device model (experimental)** as the semantic provider and enable semantic ranking.
+5. Keep using wording search while the index status advances. Try a synonym-based query after it reaches ready.
+6. Disable semantic ranking during a rebuild. Wording search should remain available and the indexing work should stop promptly.
+7. Re-enable it, then use the model manager's **Remove model files** action when finished.
+
+Expected: the interface remains responsive, note text is not sent to an endpoint,
+failures explain that wording ranking is being used, and removing the model does
+not change any note. ScottSearch stores normalized vectors in its plugin data so
+unchanged notes do not need to be indexed again; clearing the embedding cache
+removes those vectors.
+
+Please report the operating system, Obsidian version, approximate note count,
+cold and warm indexing time, query responsiveness, and the highest memory use
+you can observe. Never include real note text or paths.
+
 ### 6. Check desktop and mobile
 
 - Resize the desktop sidebar to narrow and wide widths.
@@ -83,6 +107,11 @@ Expected: the index follows creates, edits, renames, and deletions without a man
 - When finished testing, choose **Uninstall**. If you used BRAT, remove ScottSearch from BRAT's plugin list too.
 
 Expected: Obsidian continues normally and no notes are changed or deleted.
+
+If you downloaded the experimental model, remove it from the ScottSearch model
+manager before uninstalling when practical. Obsidian or BRAT may remove the
+whole plugin folder during uninstall, but the in-plugin action makes the scope
+and result visible first.
 
 ## Send useful feedback
 

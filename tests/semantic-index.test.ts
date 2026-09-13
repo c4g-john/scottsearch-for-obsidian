@@ -32,6 +32,7 @@ describe('SemanticIndex', () => {
 
     await index.update(notes, embedder, 1);
     expect(embedder.embed).toHaveBeenCalledTimes(2);
+    expect(embedder.embed).toHaveBeenCalledWith(expect.any(Array), 'document', undefined);
     expect(index.size).toBe(2);
 
     await index.update(notes, embedder, 10);
@@ -67,6 +68,28 @@ describe('SemanticIndex', () => {
     expect(scores.get('Alpha.md')).toBeCloseTo(1);
     expect(scores.get('Beta.md')).toBeCloseTo(0);
     expect(restored.size).toBe(2);
+    expect(embedder.embed).toHaveBeenLastCalledWith(['alpha concept'], 'query', undefined);
+  });
+
+  it('passes cancellation to providers and stops before committing a cancelled batch', async () => {
+    const index = new SemanticIndex();
+    const controller = new AbortController();
+    const embedder: EmbeddingProvider = {
+      id: 'cancel-test',
+      embed: async (_texts, _purpose, signal) => await new Promise<number[][]>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => {
+          const error = new Error('cancelled');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      }),
+    };
+
+    const update = index.update([document('Alpha.md', 1)], embedder, 1, undefined, controller.signal);
+    controller.abort();
+
+    await expect(update).rejects.toMatchObject({ name: 'AbortError' });
+    expect(index.size).toBe(0);
   });
 
   it('rejects incomplete and invalid embedding responses', async () => {

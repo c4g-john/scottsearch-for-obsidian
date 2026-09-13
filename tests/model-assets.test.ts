@@ -204,6 +204,22 @@ describe('VerifiedModelAssetManager', () => {
     });
   });
 
+  it('returns only buffers that were fully verified at read time', async () => {
+    const fixture = await createFixture();
+    const manager = createManager(fixture.store, fixture.manifest, fixture.fetchAsset);
+    await manager.install();
+
+    const artifacts = await manager.readVerifiedArtifacts();
+    expect([...artifacts.keys()]).toEqual(['config.json', 'onnx/model.onnx']);
+    expect(new TextDecoder().decode(artifacts.get('config.json'))).toBe('good');
+
+    fixture.store.overwrite(`${manager.modelDirectory}/config.json`, encoder.encode('BAD!'));
+    await expect(manager.readVerifiedArtifacts()).rejects.toMatchObject({
+      code: 'integrity',
+      message: 'config.json failed its integrity check.',
+    });
+  });
+
   it('deletes only the dedicated model directory', async () => {
     const fixture = await createFixture();
     const manager = createManager(fixture.store, fixture.manifest, fixture.fetchAsset);

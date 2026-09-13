@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-09-13",
+  "runtime": {
+    "package": "onnxruntime-web",
+    "version": "1.29.0",
+    "license": "MIT",
+    "npmIntegrity": "sha512-LuQlpX6MFLJZu756erwUeb1mNfoJGbs1kzDwJGNlf5RvfYMdqhcY3vNpDPK40CUV2HoWTkIj+uS0o36GFHjeYw=="
+  },
+  "bundleInputs": [
+    {
+      "path": "node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs",
+      "bytes": 72894,
+      "sha256": "7a3913dc5c7a9c3ad1144f5fbfecd402bc5013bcc886bc67664b18d8a15ab298"
+    },
+    {
+      "path": "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm",
+      "bytes": 13961845,
+      "sha256": "ec8580a9d7b9476ceee52e10a7f94124e4dc71a019d666ed6d4726697c109a4d",
+      "packaging": "gzip-compressed and base64-embedded into the generated worker"
+    }
+  ],
+  "esbuildMetafile": {
+    "nodeModuleInputs": [
+      "node_modules/onnxruntime-web/dist/ort.wasm.bundle.min.mjs"
+    ],
+    "unexpectedNodeModuleInputs": []
+  },
+  "productionAudit": {
+    "command": "npm audit --omit=dev --json",
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "releaseBoundary": "The optional model is not in the plugin archive. Runtime license text is embedded in main.js and included in THIRD_PARTY_NOTICES.md."
+}

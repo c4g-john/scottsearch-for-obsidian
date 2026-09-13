@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ScottSearch bundled worker benchmark</title>
+    <style>
+      :root { color-scheme: light dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      body { margin: 2rem auto; max-width: 72rem; padding: 0 1rem; }
+      pre { border: 1px solid #7778; border-radius: .5rem; overflow: auto; padding: 1rem; white-space: pre-wrap; }
+      #status { font-family: system-ui, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <h1>ScottSearch bundled worker benchmark</h1>
+    <p id="status">Preparing the exact plugin worker…</p>
+    <pre id="result" aria-live="polite"></pre>
+    <script type="module" src="./worker-app.js"></script>
+  </body>
+</html>

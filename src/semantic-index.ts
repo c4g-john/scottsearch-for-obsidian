@@ -1,8 +1,11 @@
 import type { SearchDocument } from './search-engine';
 
+export type EmbeddingPurpose = 'document' | 'query';
+
 export interface EmbeddingProvider {
   readonly id: string;
-  embed(texts: string[]): Promise<number[][]>;
+  embed(texts: string[], purpose?: EmbeddingPurpose, signal?: AbortSignal): Promise<number[][]>;
+  dispose?(): void;
 }
 
 export interface SerializedEmbedding {
@@ -60,7 +63,9 @@ export class SemanticIndex {
     provider: EmbeddingProvider,
     batchSize: number,
     onProgress?: (progress: SemanticProgress) => void,
+    signal?: AbortSignal,
   ): Promise<void> {
+    throwIfAborted(signal);
     const currentPaths = new Set(documents.map((document) => document.path));
     for (const path of this.cache.keys()) {
       if (!currentPaths.has(path)) this.cache.delete(path);
@@ -75,8 +80,10 @@ export class SemanticIndex {
 
     const safeBatchSize = Math.max(1, Math.floor(batchSize));
     for (let offset = 0; offset < pending.length; offset += safeBatchSize) {
+      throwIfAborted(signal);
       const batch = pending.slice(offset, offset + safeBatchSize);
-      const vectors = await provider.embed(batch.map(toEmbeddingText));
+      const vectors = await provider.embed(batch.map(toEmbeddingText), 'document', signal);
+      throwIfAborted(signal);
       if (vectors.length !== batch.length) {
         throw new Error(`Embedding provider returned ${vectors.length} vectors for ${batch.length} documents.`);
       }
@@ -96,8 +103,10 @@ export class SemanticIndex {
     }
   }
 
-  async score(queryText: string, provider: EmbeddingProvider): Promise<Map<string, number>> {
-    const [sourceVector] = await provider.embed([queryText]);
+  async score(queryText: string, provider: EmbeddingProvider, signal?: AbortSignal): Promise<Map<string, number>> {
+    throwIfAborted(signal);
+    const [sourceVector] = await provider.embed([queryText], 'query', signal);
+    throwIfAborted(signal);
     const queryVector = sourceVector ? normalizeVector(sourceVector) : null;
     if (!queryVector) throw new Error('Embedding provider returned an invalid query vector.');
 
@@ -112,7 +121,7 @@ export class SemanticIndex {
 
 function toEmbeddingText(document: SearchDocument): string {
   const heading = `Title: ${document.basename}\nTags: ${document.tags.join(', ')}\n\n`;
-  return `${heading}${document.content.slice(0, 12_000)}`;
+  return `${heading}${document.content}`;
 }
 
 export function normalizeVector(vector: number[]): number[] | null {
@@ -139,4 +148,11 @@ function dot(left: number[], right: number[]): number {
 
 function yieldToEventLoop(): Promise<void> {
   return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  const error = new Error('Semantic indexing was cancelled.');
+  error.name = 'AbortError';
+  throw error;
 }

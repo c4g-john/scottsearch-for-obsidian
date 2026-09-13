@@ -120,7 +120,7 @@
         <div class="section-heading section-heading-light">
           <p class="eyebrow">Try the human-testing release</p>
           <h2>Install without touching code.</h2>
-          <p>ScottSearch uses the same small plugin bundle on macOS, Windows, Linux, iPhone, iPad, and Android. During beta, BRAT is the easiest installer.</p>
+          <p>ScottSearch 0.1 uses the same small plugin bundle on macOS, Windows, Linux, iPhone, iPad, and Android. During beta, BRAT is the easiest installer.</p>
         </div>
 
         <div class="install-layout">
@@ -149,7 +149,7 @@
           <article class="install-card download-card">
             <div class="install-card-top"><span>One download</span><span>All platforms</span></div>
             <h3>Download the ZIP</h3>
-            <p>The ZIP contains the three files Obsidian needs. This route is useful when BRAT is not an option, but it requires access to your vault's hidden plugin folder.</p>
+            <p>The ZIP contains the three plugin files Obsidian needs; the repository also carries readable license information. This route is useful when BRAT is not an option, but it requires access to your vault's hidden plugin folder.</p>
             <div class="release-version-row">
               <div><span>Human-testing release</span><strong data-release-version>0.1.0</strong></div>
               <span class="release-state">Pre-release</span>
@@ -204,10 +204,10 @@
           </article>
           <article class="roadmap-stage stage-explore">
             <div class="stage-marker"><span>04</span></div>
-            <p class="stage-label">Building safely</p>
+            <p class="stage-label">Prototype in progress</p>
             <h3>Zero-setup semantics</h3>
-            <p>Consent-first, integrity-checked model downloads are ready. Next comes a desktop-only worker experiment; mobile stays off until real-device testing passes.</p>
-            <a href="https://github.com/c4g-john/scottsearch-for-obsidian/issues/21">Desktop experiment <span data-issue-state="21">planned</span></a>
+            <p>The consent-first download and desktop worker prototype now work. A public build waits for macOS, Windows, and Linux Obsidian measurements; mobile stays off pending its own tests.</p>
+            <a href="https://github.com/c4g-john/scottsearch-for-obsidian/issues/21">Desktop experiment <span data-issue-state="21">prototype</span></a>
           </article>
         </div>
         <a class="text-link" href="https://github.com/users/c4g-john/projects/4">Open the detailed public roadmap <span aria-hidden="true">→</span></a>
@@ -285,7 +285,7 @@
         </div>
         <div class="faq-list">
           <details><summary>Do I need AI or Ollama?</summary><p>No. ScottSearch includes a strong local wording-based search. Ollama is optional and adds matches based on meaning, including notes that use different words.</p></details>
-          <details><summary>Do my notes leave my device?</summary><p>Wording-based search stays inside Obsidian. Semantic search is off until you enable it. When enabled, text goes only to the Ollama address shown in settings; the default is your own computer.</p></details>
+          <details><summary>Do my notes leave my device?</summary><p>Wording-based search stays inside Obsidian. Semantic search is off until you enable it. In 0.1, text goes only to the Ollama address shown in settings; the default is your own computer. An unreleased desktop experiment instead processes text inside an isolated on-device worker.</p></details>
           <details><summary>Which download is right for my computer or phone?</summary><p>There is only one ScottSearch plugin bundle for every platform. BRAT is the easiest beta installer, especially on mobile. Semantic mode additionally needs an Ollama endpoint that the device can reach.</p></details>
           <details><summary>How do I remove it?</summary><p>In Obsidian, open Settings → Community plugins, turn off ScottSearch, and choose uninstall. If you used BRAT, you can also remove ScottSearch from BRAT's plugin list. Your notes are not deleted.</p></details>
           <details><summary>Why is this called a human-testing release?</summary><p>The main behaviors are built and automatically tested, but the plugin still needs feedback across real vault sizes, themes, and devices before official community-directory submission.</p></details>
