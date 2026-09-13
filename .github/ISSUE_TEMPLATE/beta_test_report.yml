@@ -32,7 +32,7 @@ body:
     attributes:
       label: ScottSearch and Obsidian versions
       description: Find ScottSearch under Community plugins and the Obsidian version under About.
-      placeholder: ScottSearch 0.1.1; Obsidian 1.x.x
+      placeholder: ScottSearch 0.1.2; Obsidian 1.x.x
     validations:
       required: true
 

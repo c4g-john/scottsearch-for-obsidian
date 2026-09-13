@@ -102,8 +102,8 @@ ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and A
 3. Paste `c4g-john/scottsearch-for-obsidian`.
 4. Enable **ScottSearch** under **Settings → Community plugins**.
 
-Alternatively, download `scottsearch-0.1.1.zip` from the
-[0.1.1 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.1).
+Alternatively, download `scottsearch-0.1.2.zip` from the
+[0.1.2 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.2).
 Unzip it and place the contained `scottsearch` folder inside
 `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
 

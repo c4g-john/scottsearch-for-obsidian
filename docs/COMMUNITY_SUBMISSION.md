@@ -64,7 +64,7 @@ release state, and required GitHub release assets. Inspect a human-testing
 pre-release with:
 
 ~~~sh
-npm run check:community:live -- --version 0.1.1 --allow-prerelease
+npm run check:community:live -- --version 0.1.2 --allow-prerelease
 ~~~
 
 Omit --allow-prerelease for the stable submission gate. The stable gate is
