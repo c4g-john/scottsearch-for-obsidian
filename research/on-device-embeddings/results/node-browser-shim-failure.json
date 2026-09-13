@@ -1,0 +1,9 @@
+{
+  "measuredAt": "2026-09-13",
+  "runtime": "Node.js 24 importing the Transformers.js browser build",
+  "candidate": "mixedbread-ai/mxbai-embed-xsmall-v1",
+  "result": "failed-after-download",
+  "observedModelBytes": 25161779,
+  "error": "Unable to get model file path or buffer",
+  "interpretation": "The browser build's resource loader is not a reliable Node proxy. Renderer measurements are the canonical results for this spike."
+}

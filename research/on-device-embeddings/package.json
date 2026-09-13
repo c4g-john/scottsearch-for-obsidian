@@ -1,0 +1,12 @@
+{
+  "name": "scottsearch-on-device-embedding-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "benchmark:node-proxy": "node --expose-gc benchmark.mjs",
+    "build:browser": "../../node_modules/.bin/esbuild browser/app.js --bundle --format=esm --platform=browser --target=chrome120 --outfile=dist/browser-benchmark.js"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.2.0"
+  }
+}
