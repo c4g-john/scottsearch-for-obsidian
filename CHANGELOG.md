@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-13
+
 ### Added
 
 - Native Obsidian search view with deliberate input timing and keyboard navigation.
@@ -14,3 +16,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Optional Ollama embeddings with hybrid semantic ranking and lexical fallback.
 - Incremental vault indexing, privacy controls, settings, and cached embeddings.
 - Public product requirement form, roadmap, CI, and release packaging.
+- Friendly GitHub Pages website with no-code installation and testing guides, a visual roadmap, and live release links.
+
+[0.1.0]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0

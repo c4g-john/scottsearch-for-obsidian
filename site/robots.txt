@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://c4g-john.github.io/scottsearch-for-obsidian/sitemap.xml

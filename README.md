@@ -4,7 +4,9 @@ ScottSearch is deliberate search for [Obsidian](https://obsidian.md). It trades 
 
 The plugin combines a strong local lexical ranker with optional semantic embeddings from [Ollama](https://ollama.com). Power-user constraints stay explicit, results stay sortable and filterable, and lexical search keeps working when the embedding service is unavailable.
 
-> ScottSearch is in early public development. Version 0.1 is usable from source but has not yet been accepted into Obsidian's community plugin directory.
+> ScottSearch 0.1 is available as a human-testing pre-release. It has not yet been accepted into Obsidian's community plugin directory, so testers install it with BRAT or the release ZIP.
+
+Visit the [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-for-obsidian/) for a no-code installation guide, five useful tests, the visual roadmap, and the latest download.
 
 ## What it does
 
@@ -75,6 +77,19 @@ If Ollama is stopped, the model is missing, or the response is invalid, the sear
 
 The repository and its issues are public. Never paste real private vault content into an issue; use a fictional example with the same shape. Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/c4g-john/scottsearch-for-obsidian/security/advisories/new).
 
+## Install the human-testing release
+
+ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and Android. The easiest beta installation is through [BRAT](https://tfthacker.com/brat-plugins):
+
+1. In Obsidian, install and enable **BRAT** from **Settings → Community plugins → Browse**.
+2. Open the command menu and run **BRAT: Add a beta plugin for testing**.
+3. Paste `c4g-john/scottsearch-for-obsidian`.
+4. Enable **ScottSearch** under **Settings → Community plugins**.
+
+Alternatively, download `scottsearch-0.1.0.zip` from the [0.1.0 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0). Unzip it and place the contained `scottsearch` folder inside `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
+
+Back up important notes before testing pre-release software. ScottSearch never changes note contents, and disabling or removing it does not delete notes.
+
 ## Install for development
 
 ScottSearch requires Obsidian 1.5 or later. Building from source requires Node.js 22.12 or newer.
@@ -105,6 +120,7 @@ Inside the search input, use the arrow keys to choose a result, `Enter` to open 
 
 ## Project and requests
 
+- Read the friendly [installation, testing, and contribution guide](https://c4g-john.github.io/scottsearch-for-obsidian/).
 - Follow active work on the public [ScottSearch Roadmap](https://github.com/users/c4g-john/projects/4).
 - Submit a structured requirement through the [Product requirement form](https://github.com/c4g-john/scottsearch-for-obsidian/issues/new?template=product_requirement.yml).
 - Browse or discuss the [issue backlog](https://github.com/c4g-john/scottsearch-for-obsidian/issues).

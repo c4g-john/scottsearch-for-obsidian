@@ -11,6 +11,17 @@ Thanks for helping make Obsidian search more deliberate and useful.
 
 The [public roadmap](https://github.com/users/c4g-john/projects/4) is the source of truth for priority and status.
 
+## You do not need to code
+
+The [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-for-obsidian/) explains how to install the testing release and offers five useful things to try. A short report about what you expected and what actually happened is a valuable contribution.
+
+- Share a product need through the guided requirement form.
+- Report a confusing result, unclear instruction, or accessibility problem.
+- Test a feature on a platform, theme, or vault size that is not already represented.
+- Improve plain-language documentation.
+
+If GitHub itself feels unfamiliar, the requirement form is still safe to use: sign in, answer the questions in everyday language, preview the public text for private information, then choose **Submit new issue**.
+
 ## Development
 
 Requirements:
