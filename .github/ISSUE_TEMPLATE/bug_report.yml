@@ -1,0 +1,68 @@
+name: Bug report
+description: Report reproducible behavior that differs from what ScottSearch documents.
+title: "[Bug]: "
+labels:
+  - "bug"
+  - "needs-triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This report will be public. Do not include private notes, full vault paths, credentials, or confidential screenshots. Use fictional content when reproducing search behavior.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Sanitized reproduction
+      description: Give the smallest fictional query, note content, and steps that reproduce the problem.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: ScottSearch 0.1.0; Obsidian 1.x.x
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - iOS or iPadOS
+        - Android
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Search mode
+      options:
+        - Lexical only
+        - Hybrid semantic with Ollama
+        - Both modes
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized errors or logs
+      render: text
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Public-content acknowledgement
+      options:
+        - label: I confirm that this report contains no private vault content, credentials, or confidential personal data.
+          required: true

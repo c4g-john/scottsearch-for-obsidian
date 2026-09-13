@@ -1,0 +1,135 @@
+name: Product requirement
+description: Propose a problem ScottSearch should solve or an outcome it should enable.
+title: "[Requirement]: "
+labels:
+  - "type: requirement"
+  - "needs-triage"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape ScottSearch. Describe the need in your own words; you do not need to design the implementation.
+
+        **This issue will be public.** Do not paste private notes, vault paths, API keys, personal data, or confidential screenshots. Replace real content with a made-up example that has the same shape.
+
+  - type: dropdown
+    id: relationship
+    attributes:
+      label: Your relationship to the need
+      description: This gives maintainers context; it does not affect whether the request is considered.
+      options:
+        - I experience this need myself
+        - I am submitting this for someone else
+        - I am exploring an idea
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or impossible today? Focus on the problem before suggesting a feature.
+      placeholder: When I search for research about a concept, I get many literal matches but miss notes that use different words...
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should a successful experience let you accomplish?
+      placeholder: I can find the handful of notes that answer my question even when they use synonyms.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_workflow
+    attributes:
+      label: Current workflow
+      description: How do you handle this today, and where does that workflow break down?
+      placeholder: I use Obsidian search, try several synonyms, and manually open dozens of results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Sanitized example
+      description: Give a fictional query and fictional result that illustrate the need. Do not include private vault content.
+      placeholder: "Query: reducing meeting overhead\nUseful fictional note: Async decision records.md"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: Importance to your workflow
+      options:
+        - Blocking — I cannot complete the workflow
+        - High — I regularly lose significant time
+        - Medium — this would noticeably improve the workflow
+        - Low — this is an occasional convenience
+        - Unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms
+      description: Select every platform where this matters.
+      multiple: true
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - iOS or iPadOS
+        - Android
+        - Unsure or all platforms
+    validations:
+      required: true
+
+  - type: input
+    id: vault_scale
+    attributes:
+      label: Approximate vault scale
+      description: A rough note count and size helps us reason about performance. Leave out identifying details.
+      placeholder: About 4,000 Markdown notes / 1.5 GB including attachments
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints that matter
+      description: Select all that apply.
+      options:
+        - label: All note content must remain on my device or local network.
+        - label: The feature must work without an internet connection.
+        - label: The feature must work on mobile.
+        - label: The feature must not require a separate local service.
+        - label: I have another privacy, accessibility, or policy constraint described below.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How will we know this is solved?
+      description: List observable outcomes or examples that would make you consider the requirement complete.
+      placeholder: |
+        - The useful note appears in the first 10 results.
+        - Excluded project folders never appear.
+        - Results arrive within two seconds on my vault.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add non-sensitive details, alternatives considered, accessibility needs, or related public links.
+
+  - type: checkboxes
+    id: public_acknowledgement
+    attributes:
+      label: Public-content acknowledgement
+      options:
+        - label: I confirm that this submission contains no private vault content, credentials, or confidential personal data.
+          required: true
