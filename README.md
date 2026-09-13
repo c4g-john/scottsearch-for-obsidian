@@ -90,6 +90,8 @@ Alternatively, download `scottsearch-0.1.0.zip` from the [0.1.0 human-testing re
 
 Back up important notes before testing pre-release software. ScottSearch never changes note contents, and disabling or removing it does not delete notes.
 
+The [complete human-testing checklist](docs/HUMAN_TESTING.md) covers desktop, mobile, lexical and semantic search, keyboard navigation, filters, index updates, and safe removal.
+
 ## Install for development
 
 ScottSearch requires Obsidian 1.5 or later. Building from source requires Node.js 22.12 or newer.
