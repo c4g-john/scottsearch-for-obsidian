@@ -34,6 +34,7 @@ import {
 } from './settings';
 
 declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
+declare const SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: boolean;
 
 export interface IndexStatus {
   phase: 'idle' | 'lexical' | 'semantic' | 'ready';
@@ -323,7 +324,7 @@ export default class ScottSearchPlugin extends Plugin {
 
   private createEmbeddingProvider(): EmbeddingProvider {
     if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT && this.settings.semanticProvider === 'on-device') {
-      if (!Platform.isDesktopApp) {
+      if (!Platform.isDesktopApp && !SCOTTSEARCH_MOBILE_ON_DEVICE_LAB) {
         throw new Error('The experimental on-device model is available only in Obsidian for desktop.');
       }
       if (!this.onDeviceProvider || this.onDeviceProvider.isDisposed) {

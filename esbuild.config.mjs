@@ -1,14 +1,17 @@
 import esbuild from 'esbuild';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { gzipSync } from 'node:zlib';
 
 const mode = process.argv[2] ?? 'development-experiment';
-const production = mode === 'production' || mode === 'production-experiment';
+const mobileLab = mode === 'mobile-lab';
+const production = mode === 'production' || mode === 'production-experiment' || mobileLab;
 const includeOnDeviceExperiment = mode !== 'production';
+const mobileLabDirectory = 'research/mobile-on-device-lab/dist';
+if (mobileLab) mkdirSync(mobileLabDirectory, { recursive: true });
 const require = createRequire(import.meta.url);
 
 let embeddedWorkerPlugin;
@@ -147,6 +150,7 @@ const context = await esbuild.context({
   },
   bundle: true,
   define: {
+    SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: JSON.stringify(mobileLab),
     SCOTTSEARCH_ON_DEVICE_EXPERIMENT: JSON.stringify(includeOnDeviceExperiment),
   },
   entryPoints: ['src/main.ts'],
@@ -169,7 +173,7 @@ const context = await esbuild.context({
   format: 'cjs',
   logLevel: 'info',
   minify: production,
-  outfile: 'main.js',
+  outfile: mobileLab ? `${mobileLabDirectory}/main.js` : 'main.js',
   plugins: [embeddedWorkerPlugin ?? disabledWorkerPlugin],
   sourcemap: production ? false : 'inline',
   target: 'es2021',
@@ -180,6 +184,18 @@ console.log(workerSummary ?? 'Release-safe build: the unreleased on-device exper
 if (production) {
   await context.rebuild();
   await context.dispose();
+  if (mobileLab) {
+    const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+    writeFileSync(`${mobileLabDirectory}/manifest.json`, `${JSON.stringify({
+      ...manifest,
+      description: 'Unreleased synthetic-vault test build for ScottSearch mobile model research.',
+      id: 'scottsearch-mobile-lab',
+      name: 'ScottSearch Mobile Lab',
+    }, null, 2)}\n`);
+    copyFileSync('styles.css', `${mobileLabDirectory}/styles.css`);
+    copyFileSync('research/mobile-on-device-lab/README.md', `${mobileLabDirectory}/SAFETY_NOTICE.md`);
+    console.log(`Wrote the non-public mobile lab to ${mobileLabDirectory}.`);
+  }
 } else {
   await context.watch();
 }

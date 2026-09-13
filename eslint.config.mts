@@ -9,6 +9,7 @@ export default tseslint.config(
       'node_modules',
       'coverage',
       'research/on-device-embeddings/dist',
+      'research/mobile-on-device-lab/dist',
     ],
   },
   {

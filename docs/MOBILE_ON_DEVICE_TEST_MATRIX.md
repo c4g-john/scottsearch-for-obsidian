@@ -22,8 +22,9 @@ If a class is unavailable, record who looked for it, the date, and why it could
 not be tested. An unavailable class is not a pass and prevents an
 all-mobile-enable recommendation.
 
-Use an exact, reviewable mobile-lab build supplied by the maintainer. Record its
-commit, main.js SHA-256, model revision, runtime version, and build command.
+Use an exact, reviewable mobile-lab build supplied by the maintainer through the
+[non-public lab procedure](../research/mobile-on-device-lab/README.md). Record
+its commit, main.js SHA-256, model revision, runtime version, and build command.
 Never substitute the public release: public releases intentionally have no
 mobile model control. Never distribute the lab build as a GitHub release or
 through BRAT.

@@ -8,6 +8,7 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "build:experiment": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production-experiment",
+    "build:mobile-lab": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs mobile-lab && node scripts/check-mobile-lab.mjs",
     "lint": "eslint src tests",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,7 +17,7 @@
     "check:community": "node --test scripts/community-readiness.node-test.mjs && node scripts/check-community-readiness.mjs",
     "check:community:live": "node scripts/check-community-release.mjs",
     "check:site": "node --check site/app.js",
-    "check": "npm run lint && npm run test && npm run build && npm run check:community && npm run check:site",
+    "check": "npm run lint && npm run test && npm run build && npm run check:community && npm run check:site && npm run build:mobile-lab",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
