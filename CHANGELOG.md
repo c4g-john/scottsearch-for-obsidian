@@ -12,7 +12,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Desktop-only, consent-first model asset manager with pinned manifests, bounded downloads, SHA-256 verification, atomic staging, progress, cancellation, retry, re-verification, and scoped deletion.
 - Experimental desktop semantic provider using Snowflake Arctic Embed XS int8 in a dedicated worker, with lazy verified loading, in-worker tokenization and bounded note chunking, CLS pooling, normalized 384-dimensional embeddings, cancellation, disposal, and lexical fallback.
 - Reproducible exact-worker benchmark and runtime asset audit for the on-device prototype. Cross-platform Obsidian measurements remain a release gate.
-- Friendly beta test report form for sanitized platform, theme, vault-size, checklist, and approximate timing evidence—including successful test passes.
 
 ## [0.1.1] - 2026-09-13
 
@@ -22,6 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   preflight for manifest, repository, release-asset, catalog-collision, and
   provenance checks.
 - GitHub artifact attestations for every published release file.
+- Friendly beta test report form for sanitized platform, theme, vault-size,
+  checklist, and approximate timing evidence—including successful test passes.
 
 ### Changed
 
@@ -48,5 +49,5 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Public product requirement form, roadmap, CI, and release packaging.
 - Friendly GitHub Pages website with no-code installation and testing guides, a visual roadmap, and live release links.
 
-[0.1.0]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0
 [0.1.1]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.1
+[0.1.0]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0
