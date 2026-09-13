@@ -37,12 +37,16 @@ The first candidate is [Snowflake Arctic Embed XS](https://huggingface.co/Snowfl
 ScottSearch treats upstream bytes as untrusted until all checks pass:
 
 1. URLs use HTTPS and include the immutable model revision.
-2. Every response is bounded by the reviewed byte count before it can grow in memory.
-3. The exact byte count is checked again after download.
+2. Obsidian's `requestUrl` API requests fixed 1 MiB ranges. Every partial
+   response must return the exact reviewed `Content-Range`, byte count, and
+   buffer length before it is copied into the artifact buffer.
+3. The assembled artifact's exact byte count is checked again after download.
 4. Web Crypto calculates SHA-256 locally and compares it with the manifest shipped in `main.js`.
 5. Files are written to a unique staging directory.
 6. Only after all files pass does one directory rename expose the completed model directory.
-7. Cancellation, network loss, size mismatch, hash mismatch, or storage failure removes the staging directory. A partial model never becomes ready.
+7. Cancellation stops future ranges and removes the staging directory. Network
+   loss, size mismatch, hash mismatch, or storage failure does the same. A
+   partial model never becomes ready.
 
 The worker provider re-reads every artifact and verifies the exact buffers it will use, avoiding a check-then-read gap. It then transfers the verified model buffer into a dedicated worker. A missing or changed artifact is rejected and search visibly falls back to lexical ranking.
 
@@ -61,7 +65,13 @@ The experimental worker is unavailable on phones and tablets. The rest of ScottS
 
 ## Cancel, retry, verify, and remove
 
-The manager shows total progress and which required file is downloading or being verified. Closing the dialog or choosing **Cancel download** aborts the request and removes incomplete files. A later retry begins from a clean staging directory.
+The manager shows total progress and which required file is downloading or
+being verified. Progress advances only after a validated range returns. Closing
+the dialog or choosing **Cancel download** stops future ranges, returns control,
+and removes incomplete files. Obsidian's `requestUrl` API has no in-flight abort
+handle, so the current range—at most 1 MiB—may still finish in the background.
+ScottSearch refuses a retry until it finishes, preventing duplicate transfers;
+a later retry begins from a clean staging directory.
 
 After installation, **Verify again** re-hashes every local file. **Remove model files** asks for confirmation, stops the active on-device worker, then removes only the dedicated `model-assets` directory. It does not delete or edit notes, lexical data, cached Ollama embeddings, the Ollama endpoint, or other ScottSearch settings. If the removed provider remains selected, searches use lexical fallback until another provider is chosen or the model is downloaded again.
 
@@ -78,4 +88,7 @@ The exact runtime files, hashes, dependency audit, and licenses are recorded in
 [`runtime-bundle-audit.json`](../research/on-device-embeddings/results/runtime-bundle-audit.json)
 and [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md).
 
-Run `npm run check` before changing the manifest or manager. The test suite covers opt-in behavior, manifest validation, bounded responses, size and digest mismatch, interruption, cancellation, retry, staging/activation, later corruption, deletion scope, and storage failure.
+Run `npm run check` before changing the manifest or manager. The test suite
+covers opt-in behavior, manifest validation, byte-range assembly, response
+headers, size and digest mismatch, interruption, cancellation, retry exclusion,
+staging/activation, later corruption, deletion scope, and storage failure.

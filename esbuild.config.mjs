@@ -67,6 +67,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */`;
+  const workerNetworkGuard = `
+function scottsearchRejectWorkerNetworkRequest() {
+  return Promise.reject(new Error("ScottSearch worker network access is disabled; verified model and runtime bytes must be supplied by the plugin."));
+}`;
 
   const embeddedRuntimePlugin = {
     name: 'scottsearch-embedded-runtime',
@@ -83,8 +87,9 @@ SOFTWARE.
   };
 
   const workerBuild = await esbuild.build({
-    banner: { js: runtimeLicense },
+    banner: { js: `${runtimeLicense}\n${workerNetworkGuard}` },
     bundle: true,
+    define: { fetch: 'scottsearchRejectWorkerNetworkRequest' },
     entryPoints: ['src/on-device/worker.ts'],
     format: 'iife',
     legalComments: 'none',

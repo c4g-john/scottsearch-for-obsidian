@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ARCTIC_EMBED_XS_INT8,
@@ -6,7 +6,7 @@ import {
 } from '../src/model-assets/manifest';
 import {
   ModelAssetManagerError,
-  fetchModelAsset,
+  createRequestUrlModelAssetFetcher,
   sha256Hex,
   VerifiedModelAssetManager,
   type ModelAsset,
@@ -47,10 +47,6 @@ describe('reviewed model manifest', () => {
       url.startsWith(`https://huggingface.co/Snowflake/snowflake-arctic-embed-xs/resolve/${ARCTIC_EMBED_XS_INT8.revision}/`),
     )).toBe(true);
   });
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
 });
 
 describe('VerifiedModelAssetManager', () => {
@@ -244,38 +240,172 @@ describe('VerifiedModelAssetManager', () => {
   });
 });
 
-describe('fetchModelAsset', () => {
-  it('streams into a bounded buffer and reports progress', async () => {
+describe('createRequestUrlModelAssetFetcher', () => {
+  it('uses the Obsidian request API and reports bytes only after the response returns', async () => {
     const bytes = encoder.encode('verified');
-    const fetchMock = vi.fn(async () => new Response(bytes));
-    vi.stubGlobal('fetch', fetchMock);
+    const requestUrl = vi.fn(async () => requestResponse(bytes, 200, { 'Content-Length': String(bytes.byteLength) }));
     const progress: number[] = [];
     const asset = await assetFor('model.onnx', bytes);
+    const fetchAsset = createRequestUrlModelAssetFetcher(requestUrl);
 
-    const result = await fetchModelAsset(asset, {
+    const result = await fetchAsset(asset, {
       onProgress: (loaded) => progress.push(loaded),
       signal: new AbortController().signal,
     });
 
     expect(new TextDecoder().decode(result)).toBe('verified');
-    expect(progress[progress.length - 1]).toBe(bytes.byteLength);
-    expect(fetchMock).toHaveBeenCalledWith(asset.url, expect.objectContaining({
-      cache: 'no-store',
-      credentials: 'omit',
-    }));
+    expect(progress).toEqual([bytes.byteLength]);
+    expect(requestUrl).toHaveBeenCalledWith({
+      headers: { Range: `bytes=0-${bytes.byteLength - 1}` },
+      method: 'GET',
+      throw: false,
+      url: asset.url,
+    });
   });
 
-  it('stops a response that exceeds its reviewed size', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(encoder.encode('oversized'))));
+  it('assembles validated one-mebibyte ranges and reports bounded progress', async () => {
+    const bytes = new Uint8Array(1_048_579).fill(7);
+    const asset = await assetFor('model.onnx', bytes);
+    const requestUrl = vi.fn(async (request: { headers: Record<string, string> }) => {
+      const match = /^bytes=(\d+)-(\d+)$/u.exec(request.headers.Range ?? '');
+      if (!match) throw new Error('Missing byte range.');
+      const start = Number(match[1]);
+      const end = Number(match[2]);
+      const part = bytes.slice(start, end + 1);
+      return requestResponse(part, 206, {
+        'CONTENT-LENGTH': String(part.byteLength),
+        'Content-Range': `bytes ${start}-${end}/${bytes.byteLength}`,
+      });
+    });
+    const progress: number[] = [];
+
+    const result = await createRequestUrlModelAssetFetcher(requestUrl)(asset, {
+      onProgress: (loaded) => progress.push(loaded),
+      signal: new AbortController().signal,
+    });
+
+    expect(new Uint8Array(result)).toEqual(bytes);
+    expect(requestUrl).toHaveBeenCalledTimes(2);
+    expect(progress).toEqual([1_048_576, bytes.byteLength]);
+  });
+
+  it('rejects an HTTP failure', async () => {
     const expected = encoder.encode('tiny');
     const asset = await assetFor('model.onnx', expected);
+    const fetchAsset = createRequestUrlModelAssetFetcher(async () => requestResponse(expected, 503));
 
-    await expect(fetchModelAsset(asset, {
+    await expect(fetchAsset(asset, {
+      onProgress: () => undefined,
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ code: 'network', message: 'Unable to download model.onnx: HTTP 503.' });
+  });
+
+  it('rejects a case-insensitive declared size above the reviewed limit', async () => {
+    const expected = encoder.encode('tiny');
+    const asset = await assetFor('model.onnx', expected);
+    const fetchAsset = createRequestUrlModelAssetFetcher(async () => requestResponse(
+      expected,
+      200,
+      { 'CONTENT-LENGTH': String(expected.byteLength + 1) },
+    ));
+
+    await expect(fetchAsset(asset, {
       onProgress: () => undefined,
       signal: new AbortController().signal,
     })).rejects.toMatchObject({ code: 'size' });
   });
+
+  it('rejects a partial response with the wrong content range', async () => {
+    const bytes = new Uint8Array(1_048_577).fill(3);
+    const asset = await assetFor('model.onnx', bytes);
+    const firstPart = bytes.slice(0, 1_048_576);
+    const fetchAsset = createRequestUrlModelAssetFetcher(async () => requestResponse(
+      firstPart,
+      206,
+      {
+        'content-length': String(firstPart.byteLength),
+        'content-range': `bytes 1-1048576/${bytes.byteLength}`,
+      },
+    ));
+
+    await expect(fetchAsset(asset, {
+      onProgress: () => undefined,
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ code: 'size', message: 'model.onnx returned an unexpected byte range.' });
+  });
+
+  it('does not start a request when already cancelled', async () => {
+    const bytes = encoder.encode('verified');
+    const asset = await assetFor('model.onnx', bytes);
+    const requestUrl = vi.fn(async () => requestResponse(bytes));
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(createRequestUrlModelAssetFetcher(requestUrl)(asset, {
+      onProgress: () => undefined,
+      signal: controller.signal,
+    })).rejects.toMatchObject({ code: 'cancelled' });
+    expect(requestUrl).not.toHaveBeenCalled();
+  });
+
+  it('returns cancellation promptly while a native request finishes in the background', async () => {
+    const bytes = encoder.encode('verified');
+    const asset = await assetFor('model.onnx', bytes);
+    let finishRequest: ((response: ReturnType<typeof requestResponse>) => void) | undefined;
+    const nativeRequest = new Promise<ReturnType<typeof requestResponse>>((resolve) => {
+      finishRequest = resolve;
+    });
+    const requestUrl = vi.fn(() => nativeRequest);
+    const fetchAsset = createRequestUrlModelAssetFetcher(requestUrl);
+    const progress: number[] = [];
+    const controller = new AbortController();
+    const download = fetchAsset(asset, {
+      onProgress: (loaded) => progress.push(loaded),
+      signal: controller.signal,
+    });
+
+    expect(requestUrl).toHaveBeenCalledOnce();
+    controller.abort();
+    await expect(download).rejects.toMatchObject({ code: 'cancelled' });
+    await expect(fetchAsset(asset, {
+      onProgress: () => undefined,
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({
+      code: 'network',
+      message: 'The previous native model request is still finishing. Wait before retrying.',
+    });
+    finishRequest?.(requestResponse(bytes));
+    await nativeRequest;
+    await Promise.resolve();
+    await expect(fetchAsset(asset, {
+      onProgress: () => undefined,
+      signal: new AbortController().signal,
+    })).resolves.toHaveProperty('byteLength', bytes.byteLength);
+    expect(requestUrl).toHaveBeenCalledTimes(2);
+    expect(progress).toEqual([]);
+  });
+
+  it('maps native request failures to a network error', async () => {
+    const bytes = encoder.encode('verified');
+    const asset = await assetFor('model.onnx', bytes);
+    const fetchAsset = createRequestUrlModelAssetFetcher(async () => {
+      throw new Error('Offline.');
+    });
+
+    await expect(fetchAsset(asset, {
+      onProgress: () => undefined,
+      signal: new AbortController().signal,
+    })).rejects.toMatchObject({ code: 'network', message: 'Unable to download model.onnx: Offline.' });
+  });
 });
+
+function requestResponse(
+  bytes: Uint8Array<ArrayBuffer>,
+  status = 200,
+  headers: Record<string, string> = {},
+): { arrayBuffer: ArrayBuffer; headers: Record<string, string>; status: number } {
+  return { arrayBuffer: copyBuffer(bytes), headers, status };
+}
 
 async function createFixture(): Promise<{
   data: Map<string, Uint8Array<ArrayBuffer>>;

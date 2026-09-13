@@ -139,7 +139,7 @@ export class ModelAssetManagerModal extends Modal {
     this.contentEl.empty();
     this.contentEl.createEl('h3', { text: 'Downloading verified model files' });
     const description = this.contentEl.createEl('p', {
-      text: 'You can cancel safely. ScottSearch will remove incomplete files.',
+      text: 'You can cancel safely. ScottSearch removes incomplete files; Obsidian may finish the one small part already requested.',
     });
     const progress = this.contentEl.createEl('progress', {
       attr: { max: String(this.manager.totalBytes), value: '0' },
@@ -183,7 +183,7 @@ export class ModelAssetManagerModal extends Modal {
       if (!this.isOpen) return;
       this.downloading = false;
       if (error instanceof ModelAssetManagerError && error.code === 'cancelled') {
-        new Notice('ScottSearch model download cancelled. Incomplete files were removed.');
+        new Notice('ScottSearch model download cancelled. Incomplete files were removed; one requested part may finish in the background.');
         await this.renderOverview();
       } else {
         this.renderFailure('The model files were not installed.', error);
@@ -296,6 +296,6 @@ function friendlyError(error: unknown): string {
     case 'manifest':
       return 'This ScottSearch build contains an invalid model manifest. Please report this as a bug.';
     case 'cancelled':
-      return 'The download was cancelled and incomplete files were removed.';
+      return 'The download was cancelled and incomplete files were removed. One requested part may finish in the background.';
   }
 }

@@ -5,6 +5,7 @@ import {
   normalizePath,
   Platform,
   Plugin,
+  requestUrl,
   TFile,
   type TAbstractFile,
 } from 'obsidian';
@@ -12,7 +13,10 @@ import {
 import { OllamaEmbeddingProvider } from './ollama-provider';
 import { ARCTIC_EMBED_XS_INT8 } from './model-assets/manifest';
 import { ObsidianModelAssetStore } from './model-assets/obsidian-store';
-import { VerifiedModelAssetManager } from './model-assets/verified-model-manager';
+import {
+  createRequestUrlModelAssetFetcher,
+  VerifiedModelAssetManager,
+} from './model-assets/verified-model-manager';
 import { OnDeviceEmbeddingProvider } from './on-device/provider';
 import { parseQuery } from './query';
 import {
@@ -85,6 +89,7 @@ export default class ScottSearchPlugin extends Plugin {
         normalizePath(`${pluginDirectory}/model-assets`),
         ARCTIC_EMBED_XS_INT8,
         new ObsidianModelAssetStore(this.app.vault.adapter),
+        { fetchAsset: createRequestUrlModelAssetFetcher(requestUrl) },
       );
     }
     await this.loadPluginData();

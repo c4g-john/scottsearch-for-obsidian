@@ -42,7 +42,8 @@ The generated directory is ignored by Git. The audit fails unless:
   **scottsearch-mobile-lab**;
 - the reviewed browser-only runtime, pinned model identity, and mobile-lab
   warning are present;
-- no bundled Node or Electron import exists;
+- no direct browser `fetch` or bundled Node/Electron import exists;
+- model downloads use Obsidian's mobile-compatible `requestUrl` API;
 - the normal root main.js still contains none of the lab/runtime/model markers.
 - the generated main.js matches the repository's reviewed EXPECTED_SHA256.
 
@@ -62,10 +63,18 @@ reject an artifact whose digest is missing or different.
    into passes.
 
 The lab permits the model controls on mobile so the compatibility decision can
-be measured. It still requires explicit consent before a model download. The
-current streaming download path has an unresolved cross-platform warning from
-Obsidian's official linter; a successful download does not waive that review
-gate.
+be measured. It still requires explicit consent before a model download. Model
+files use Obsidian's `requestUrl` API, which returns each response whole rather
+than as a stream. ScottSearch requests fixed 1 MiB ranges, validates the range
+and size, and advances progress only after each range returns.
+
+The API exposes no abort handle. Pressing cancel returns ScottSearch to lexical
+search promptly and removes staging data, but the already-started range—at most
+1 MiB—may finish in the background. Record both the visible cancellation time
+and any observable continued network activity. Continued transfer is a
+limitation, not a pass, and must inform the recommendation in #22. ScottSearch
+refuses a retry until that native request finishes so repeated clicks cannot
+create duplicate model transfers.
 
 ## Stop and remove
 

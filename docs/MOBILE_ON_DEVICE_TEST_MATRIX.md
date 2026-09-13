@@ -69,7 +69,7 @@ experimental instead.
 | Memory pressure | No OS memory warning, forced reload, termination, or missing-result corruption in two consecutive full runs. If a process figure is available, peak delta is at most 512 MiB. | Any warning/reload/termination/corruption, or measured delta above 512 MiB. |
 | Battery | One 1,000-note index plus 25 queries consumes no more than 5 battery percentage points while unplugged under the controls below. | More than 5 points, or the device cannot complete the run unplugged. |
 | Heat and throttling | No OS thermal warning; a second warm index is no more than 50% slower than the first. | Thermal warning, user-unsafe heat, or more than 50% slowdown. |
-| Cancellation | Disabling semantic ranking stops work and returns usable lexical search within 5 seconds; incomplete staging files are removed. | Work continues, UI remains blocked, or unsafe partial files remain. |
+| Cancellation | Disabling semantic ranking stops indexing/inference, returns usable lexical search within 5 seconds, and removes incomplete staging files. During a model download, separately record whether the native request continues after cancellation. | UI remains blocked, unsafe partial files remain, or indexing/inference continues. A native request that continues is recorded as a transport limitation and prevents an unqualified mobile-enable recommendation. |
 | Suspension recovery | After a 60-second background suspension, the plugin resumes or reaches explained lexical fallback within 10 seconds. | Crash, permanent spinner, corrupt cache, or no usable search after 10 seconds. |
 
 Battery controls: begin between 30% and 90%, unplug power, disable battery-saver
@@ -85,7 +85,11 @@ or **Not measurable** with a short reason:
 
 1. Fresh offline startup with no model.
 2. Consent screen review followed by cancel before download.
-3. Interrupted download, retry, and verification.
+3. Interrupted download, retry, and verification. Record visible cancellation
+   time and whether network transfer continues after cancellation; Obsidian's
+   `requestUrl` API exposes no abort handle for an in-flight native request.
+   ScottSearch limits that request to a 1 MiB range and must not begin a retry
+   until the range finishes.
 4. One deliberately corrupt model file; verify rejection and clean repair.
 5. Low-storage attempt using the safest OS-supported simulation. Never fill a
    personal device to a dangerous level.
@@ -98,8 +102,9 @@ or **Not measurable** with a short reason:
 12. Restart offline after all cases and confirm lexical fallback again.
 
 Before any positive mobile recommendation, inspect the exact lab bundle and
-build metadata for Node or Electron imports. Also resolve or explicitly document
-every cross-platform network warning from Obsidian's official linter. Passing a
+build metadata for Node or Electron imports and direct browser `fetch`. Model
+downloads must use Obsidian's `requestUrl` API. Its full-buffer range responses
+and lack of an in-flight abort handle remain measured limitations. Passing a
 device test does not waive the
 [mobile-development guidance](https://docs.obsidian.md/Plugins/Getting%20started/Mobile%20development),
 [developer policies](https://docs.obsidian.md/community-directory/developer-policies),

@@ -30,6 +30,8 @@ for (const marker of [
   'Mobile on-device lab',
   'huggingface.co/Snowflake',
   'model_int8.onnx',
+  'content-range',
+  'ScottSearch worker network access is disabled',
 ]) {
   check(labBundle.includes(marker), `Lab bundle is missing expected marker: ${marker}.`);
   check(!releaseBundle.includes(marker), `Normal release bundle contains lab marker: ${marker}.`);
@@ -39,9 +41,11 @@ for (const forbidden of [
   "require('electron')",
   'require("node:',
   "require('node:",
+  'fetch(',
 ]) {
-  check(!labBundle.includes(forbidden), `Lab bundle contains forbidden Node/Electron import: ${forbidden}.`);
+  check(!labBundle.includes(forbidden), `Lab bundle contains forbidden platform/network marker: ${forbidden}.`);
 }
+check(labBundle.includes('requestUrl'), 'Lab bundle must use the Obsidian requestUrl network API.');
 check(safetyNotice.includes('Never use this build with a personal vault'), 'Lab safety notice must prohibit personal-vault use.');
 check(safetyNotice.includes('not a release'), 'Lab safety notice must state that the artifact is not a release.');
 check(gitignore.includes('/research/mobile-on-device-lab/dist/'), 'Generated lab artifacts must be ignored by Git.');
@@ -56,7 +60,7 @@ if (errors.length > 0) {
 } else {
   console.log('Mobile lab audit passed.');
   console.log(`main.js: ${statSync(resolve(labRoot, 'main.js')).size} bytes; sha256:${digest}`);
-  console.log('Distinct manifest, safety notice, expected browser runtime, no Node/Electron imports, and release isolation verified.');
+  console.log('Distinct manifest, safety notice, requestUrl transport, expected browser runtime, no direct fetch/Node/Electron imports, and release isolation verified.');
 }
 
 function check(condition, message) {

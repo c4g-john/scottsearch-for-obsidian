@@ -2,6 +2,7 @@ const MARKER_FILENAME = 'scottsearch-model.json';
 const MARKER_SCHEMA_VERSION = 1;
 const MAX_ARTIFACT_BYTES = 256_000_000;
 const MAX_MODEL_BYTES = 512_000_000;
+const REQUEST_CHUNK_BYTES = 1_048_576;
 
 export interface ModelAsset {
   path: string;
@@ -38,6 +39,19 @@ export interface ModelAssetFetchOptions {
   signal: AbortSignal;
   onProgress: (loadedBytes: number) => void;
 }
+
+export interface ModelAssetRequestUrlResponse {
+  status: number;
+  headers: Record<string, string>;
+  arrayBuffer: ArrayBuffer;
+}
+
+export type ModelAssetRequestUrl = (request: {
+  url: string;
+  method: 'GET';
+  headers: Record<string, string>;
+  throw: false;
+}) => Promise<ModelAssetRequestUrlResponse>;
 
 export type ModelAssetFetcher = (
   asset: ModelAsset,
@@ -86,7 +100,7 @@ export class ModelAssetManagerError extends Error {
 }
 
 export interface VerifiedModelAssetManagerOptions {
-  fetchAsset?: ModelAssetFetcher;
+  fetchAsset: ModelAssetFetcher;
   installationId?: () => string;
   now?: () => Date;
 }
@@ -101,11 +115,11 @@ export class VerifiedModelAssetManager {
     readonly rootDirectory: string,
     readonly manifest: ModelAssetManifest,
     private readonly store: ModelAssetStore,
-    options: VerifiedModelAssetManagerOptions = {},
+    options: VerifiedModelAssetManagerOptions,
   ) {
     validateRootDirectory(rootDirectory);
     validateManifest(manifest);
-    this.fetchAsset = options.fetchAsset ?? fetchModelAsset;
+    this.fetchAsset = options.fetchAsset;
     this.installationId = options.installationId ?? defaultInstallationId;
     this.now = options.now ?? (() => new Date());
   }
@@ -363,61 +377,54 @@ export class VerifiedModelAssetManager {
   }
 }
 
-export async function fetchModelAsset(
-  asset: ModelAsset,
-  { signal, onProgress }: ModelAssetFetchOptions,
-): Promise<ArrayBuffer> {
-  let response: Response;
-  try {
-    response = await fetch(asset.url, {
-      cache: 'no-store',
-      credentials: 'omit',
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-      signal,
-    });
-  } catch (error) {
-    if (signal.aborted || isAbortError(error)) throw error;
-    throw new ModelAssetManagerError('network', `Unable to download ${asset.path}: ${readableError(error)}`);
-  }
-  if (!response.ok) {
-    throw new ModelAssetManagerError('network', `Unable to download ${asset.path}: HTTP ${response.status}.`);
-  }
-
-  const declaredLength = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declaredLength) && declaredLength > asset.bytes) {
-    throw new ModelAssetManagerError('size', `${asset.path} is larger than the reviewed manifest allows.`);
-  }
-
-  if (!response.body) {
-    const data = await response.arrayBuffer();
-    onProgress(data.byteLength);
-    return data;
-  }
-
-  const output = new Uint8Array(asset.bytes);
-  const reader = response.body.getReader();
-  let offset = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (offset + value.byteLength > output.byteLength) {
-        await reader.cancel();
-        throw new ModelAssetManagerError('size', `${asset.path} is larger than the reviewed manifest allows.`);
+export function createRequestUrlModelAssetFetcher(
+  requestUrl: ModelAssetRequestUrl,
+): ModelAssetFetcher {
+  let nativeRequest: Promise<ModelAssetRequestUrlResponse> | undefined;
+  return async (asset, { signal, onProgress }) => {
+    const output = new Uint8Array(asset.bytes);
+    let offset = 0;
+    while (offset < asset.bytes) {
+      throwIfCancelled(signal);
+      if (nativeRequest) {
+        throw new ModelAssetManagerError(
+          'network',
+          'The previous native model request is still finishing. Wait before retrying.',
+        );
       }
-      output.set(value, offset);
-      offset += value.byteLength;
+
+      const end = Math.min(offset + REQUEST_CHUNK_BYTES - 1, asset.bytes - 1);
+      const expectedBytes = end - offset + 1;
+      let response: ModelAssetRequestUrlResponse;
+      try {
+        const startedRequest = Promise.resolve(requestUrl({
+          headers: { Range: `bytes=${offset}-${end}` },
+          method: 'GET',
+          throw: false,
+          url: asset.url,
+        }));
+        const trackedRequest = startedRequest.finally(() => {
+          if (nativeRequest === trackedRequest) nativeRequest = undefined;
+        });
+        nativeRequest = trackedRequest;
+        response = await waitForRequestOrAbort(trackedRequest, signal);
+      } catch (error) {
+        if (signal.aborted || (error instanceof ModelAssetManagerError && error.code === 'cancelled')) throw error;
+        throw new ModelAssetManagerError('network', `Unable to download ${asset.path}: ${readableError(error)}`);
+      }
+
+      throwIfCancelled(signal);
+      validateRangeResponse(asset, response, offset, end, expectedBytes);
+      output.set(new Uint8Array(response.arrayBuffer), offset);
+      offset += expectedBytes;
       onProgress(offset);
     }
-  } finally {
-    reader.releaseLock();
-  }
-  return output.buffer.slice(0, offset);
+    return output.buffer;
+  };
 }
 
 export async function sha256Hex(data: ArrayBuffer): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', data);
+  const digest = await crypto.subtle.digest('SHA-256', data);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -550,6 +557,69 @@ function encodeText(text: string): ArrayBuffer {
 
 function throwIfCancelled(signal: AbortSignal): void {
   if (signal.aborted) throw new ModelAssetManagerError('cancelled', 'The model download was cancelled.');
+}
+
+function waitForRequestOrAbort<T>(request: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(new ModelAssetManagerError('cancelled', 'The model download was cancelled.'));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener('abort', onAbort);
+      reject(new ModelAssetManagerError('cancelled', 'The model download was cancelled.'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    void request.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
+function validateRangeResponse(
+  asset: ModelAsset,
+  response: ModelAssetRequestUrlResponse,
+  start: number,
+  end: number,
+  expectedBytes: number,
+): void {
+  const completeSingleRequest = start === 0 && expectedBytes === asset.bytes;
+  if (response.status !== 206 && !(response.status === 200 && completeSingleRequest)) {
+    const detail = response.status >= 200 && response.status < 300
+      ? 'the server did not honor the reviewed byte range'
+      : `HTTP ${response.status}`;
+    throw new ModelAssetManagerError('network', `Unable to download ${asset.path}: ${detail}.`);
+  }
+  if (response.status === 206) {
+    const range = headerValue(response.headers, 'content-range');
+    if (range !== `bytes ${start}-${end}/${asset.bytes}`) {
+      throw new ModelAssetManagerError('size', `${asset.path} returned an unexpected byte range.`);
+    }
+  }
+  const declaredLength = numericHeader(response.headers, 'content-length');
+  if (declaredLength !== null && declaredLength !== expectedBytes) {
+    throw new ModelAssetManagerError('size', `${asset.path} returned an unexpected byte count.`);
+  }
+  if (response.arrayBuffer.byteLength !== expectedBytes) {
+    throw new ModelAssetManagerError('size', `${asset.path} returned an unexpected byte count.`);
+  }
+}
+
+function numericHeader(headers: Record<string, string>, name: string): number | null {
+  const value = headerValue(headers, name);
+  if (value === undefined || value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function headerValue(headers: Record<string, string>, name: string): string | undefined {
+  return Object.entries(headers).find(([candidate]) => candidate.toLowerCase() === name)?.[1];
 }
 
 function isAbortError(error: unknown): boolean {
