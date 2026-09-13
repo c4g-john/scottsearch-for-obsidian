@@ -1,0 +1,116 @@
+[
+  {
+    "id": "async-coordination",
+    "kind": "relevance",
+    "intent": "Find ways for a team to coordinate with fewer interruptions even when notes use different wording.",
+    "query": "reduce coordination overhead without more meetings",
+    "relevant": [
+      "Projects/Async decision records.md",
+      "Notes/When live discussion earns its cost.md",
+      "Templates/Weekly status update.md"
+    ],
+    "semanticScores": {
+      "Projects/Async decision records.md": 0.98,
+      "Notes/When live discussion earns its cost.md": 0.93,
+      "Templates/Weekly status update.md": 0.88,
+      "Books/Team Topologies notes.md": 0.51
+    }
+  },
+  {
+    "id": "distributed-resilience",
+    "kind": "relevance",
+    "intent": "Retrieve notes about keeping a distributed service available when machines fail.",
+    "query": "keep a distributed service running when machines disappear",
+    "relevant": [
+      "Research/Raft consensus.md",
+      "Research/Failure detectors.md",
+      "Operations/Incident recovery.md"
+    ],
+    "semanticScores": {
+      "Research/Raft consensus.md": 0.97,
+      "Research/Failure detectors.md": 0.95,
+      "Operations/Incident recovery.md": 0.78,
+      "Operations/Backup and restore.md": 0.46
+    }
+  },
+  {
+    "id": "concept-retrieval",
+    "kind": "relevance",
+    "intent": "Find notes about retrieving related ideas when query wording and note wording differ.",
+    "query": "discover conceptually related notes that use synonyms",
+    "relevant": [
+      "Research/Vector retrieval.md",
+      "Research/Keyword ranking.md"
+    ],
+    "semanticScores": {
+      "Research/Vector retrieval.md": 0.98,
+      "Research/Keyword ranking.md": 0.84,
+      "Projects/Async decision records.md": 0.34
+    }
+  },
+  {
+    "id": "recovery-playbook",
+    "kind": "relevance",
+    "intent": "Recover safely after data loss or a failed deployment.",
+    "query": "undo damage after a bad deploy or missing data",
+    "relevant": [
+      "Operations/Backup and restore.md",
+      "Operations/Incident recovery.md"
+    ],
+    "semanticScores": {
+      "Operations/Backup and restore.md": 0.97,
+      "Operations/Incident recovery.md": 0.95,
+      "Projects/Search/Architecture decision record guide.md": 0.22
+    }
+  },
+  {
+    "id": "self-serve-handoff",
+    "kind": "relevance",
+    "intent": "Help a new teammate take over work without scheduling another call.",
+    "query": "new teammate can take over without a handoff meeting",
+    "relevant": [
+      "Projects/Project handoff checklist.md",
+      "People/Self-serve onboarding.md",
+      "Projects/Async decision records.md"
+    ],
+    "semanticScores": {
+      "Projects/Project handoff checklist.md": 0.98,
+      "People/Self-serve onboarding.md": 0.96,
+      "Projects/Async decision records.md": 0.81,
+      "Templates/Weekly status update.md": 0.47
+    }
+  },
+  {
+    "id": "phrase-exclusion-path-date",
+    "kind": "constraint",
+    "intent": "Combine an exact phrase, exclusion, path, and created-date boundary.",
+    "query": "architecture +\"decision record\" -draft path:\"Projects/Search\" createdafter:2025-01-01",
+    "relevant": [
+      "Projects/Search/Architecture decision record guide.md"
+    ],
+    "semanticScores": {}
+  },
+  {
+    "id": "research-metadata-date",
+    "kind": "constraint",
+    "intent": "Use tag, extension, and modified-date filters without semantic text.",
+    "query": "tag:research ext:md modifiedafter:2026-01-01",
+    "relevant": [
+      "Research/Raft consensus.md",
+      "Research/Failure detectors.md",
+      "Research/Vector retrieval.md",
+      "Research/Keyword ranking.md"
+    ],
+    "semanticScores": {}
+  },
+  {
+    "id": "current-quarterly-review",
+    "kind": "constraint",
+    "intent": "Require a phrase while excluding an obsolete, older note.",
+    "query": "+\"quarterly review\" -obsolete createdafter:2025-01-01",
+    "relevant": [
+      "Reviews/Quarterly review 2026.md"
+    ],
+    "semanticScores": {}
+  }
+]

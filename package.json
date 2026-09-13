@@ -9,6 +9,7 @@
     "lint": "eslint src tests",
     "test": "vitest run",
     "test:watch": "vitest",
+    "benchmark": "node scripts/run-relevance-benchmark.mjs",
     "check:site": "node --check site/app.js",
     "check": "npm run lint && npm run test && npm run build && npm run check:site",
     "version": "node version-bump.mjs && git add manifest.json versions.json"

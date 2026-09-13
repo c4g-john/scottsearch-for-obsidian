@@ -137,6 +137,8 @@ npm run check
 
 That command runs typed linting, the unit test suite, TypeScript validation, and the production bundle. CI runs the same checks on pushes and pull requests.
 
+Run `npm run benchmark` to print the synthetic lexical-versus-hybrid relevance scorecard. The [benchmark guide](benchmarks/README.md) explains the metrics, deterministic semantic fixtures, privacy boundary, and how to add a safe regression case.
+
 ## License
 
 [MIT](LICENSE)

@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Synthetic 21-note relevance corpus, deterministic hybrid fixtures, P@10/recall@10/MRR scorecard, and exact constraint regressions.
+
 ## [0.1.0] - 2026-09-13
 
 ### Added

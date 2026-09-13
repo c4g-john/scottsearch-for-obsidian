@@ -1,0 +1,23 @@
+[
+  { "file": "Projects/Async decision records.md", "path": "Projects/Async decision records.md", "ctime": "2025-08-12", "mtime": "2026-08-20", "tags": ["collaboration", "decisions"] },
+  { "file": "Notes/When live discussion earns its cost.md", "path": "Notes/When live discussion earns its cost.md", "ctime": "2025-05-04", "mtime": "2026-07-12", "tags": ["collaboration", "meetings"] },
+  { "file": "Templates/Weekly status update.md", "path": "Templates/Weekly status update.md", "ctime": "2025-09-15", "mtime": "2026-06-30", "tags": ["templates", "async-work"] },
+  { "file": "Research/Raft consensus.md", "path": "Research/Raft consensus.md", "ctime": "2024-10-10", "mtime": "2026-02-20", "tags": ["research", "distributed-systems"] },
+  { "file": "Research/Failure detectors.md", "path": "Research/Failure detectors.md", "ctime": "2025-02-08", "mtime": "2026-02-15", "tags": ["research", "distributed-systems"] },
+  { "file": "Operations/Backup and restore.md", "path": "Operations/Backup and restore.md", "ctime": "2025-11-01", "mtime": "2026-08-18", "tags": ["operations", "recovery"] },
+  { "file": "Operations/Incident recovery.md", "path": "Operations/Incident recovery.md", "ctime": "2025-12-03", "mtime": "2026-08-22", "tags": ["operations", "recovery"] },
+  { "file": "Projects/Search/Architecture decision record guide.md", "path": "Projects/Search/Architecture decision record guide.md", "ctime": "2025-03-14", "mtime": "2026-08-10", "tags": ["architecture", "decisions"] },
+  { "file": "Projects/Search/Draft decision record.md", "path": "Projects/Search/Draft decision record.md", "ctime": "2026-04-18", "mtime": "2026-08-08", "tags": ["architecture", "draft"] },
+  { "file": "Archive/Old decision record.md", "path": "Archive/Old decision record.md", "ctime": "2023-06-05", "mtime": "2024-01-02", "tags": ["architecture", "obsolete"] },
+  { "file": "Research/Vector retrieval.md", "path": "Research/Vector retrieval.md", "ctime": "2025-07-11", "mtime": "2026-04-01", "tags": ["research", "search"] },
+  { "file": "Research/Keyword ranking.md", "path": "Research/Keyword ranking.md", "ctime": "2025-06-19", "mtime": "2026-03-20", "tags": ["research", "search"] },
+  { "file": "Reviews/Quarterly review 2026.md", "path": "Reviews/Quarterly review 2026.md", "ctime": "2026-04-02", "mtime": "2026-04-03", "tags": ["reviews"] },
+  { "file": "Archive/Quarterly review 2024.md", "path": "Archive/Quarterly review 2024.md", "ctime": "2024-04-02", "mtime": "2024-04-03", "tags": ["reviews", "obsolete"] },
+  { "file": "Projects/Project handoff checklist.md", "path": "Projects/Project handoff checklist.md", "ctime": "2025-10-06", "mtime": "2026-08-15", "tags": ["projects", "handoff"] },
+  { "file": "People/Self-serve onboarding.md", "path": "People/Self-serve onboarding.md", "ctime": "2025-10-20", "mtime": "2026-08-16", "tags": ["people", "onboarding"] },
+  { "file": "Books/Team Topologies notes.md", "path": "Books/Team Topologies notes.md", "ctime": "2024-09-03", "mtime": "2025-12-15", "tags": ["books", "teams"] },
+  { "file": "Health/Sleep routine.md", "path": "Health/Sleep routine.md", "ctime": "2025-01-06", "mtime": "2026-01-08", "tags": ["health"] },
+  { "file": "Cooking/Sourdough notes.md", "path": "Cooking/Sourdough notes.md", "ctime": "2024-08-21", "mtime": "2025-11-11", "tags": ["cooking"] },
+  { "file": "Finance/Tax checklist.md", "path": "Finance/Tax checklist.md", "ctime": "2026-01-02", "mtime": "2026-04-10", "tags": ["finance"] },
+  { "file": "Travel/Train itinerary.md", "path": "Travel/Train itinerary.md", "ctime": "2026-05-01", "mtime": "2026-05-04", "tags": ["travel"] }
+]
