@@ -14,6 +14,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Reproducible exact-worker benchmark and runtime asset audit for the on-device prototype. Cross-platform Obsidian measurements remain a release gate.
 - Friendly beta test report form for sanitized platform, theme, vault-size, checklist, and approximate timing evidence—including successful test passes.
 
+## [0.1.1] - 2026-09-13
+
+### Added
+
+- Official Obsidian plugin linting and a reproducible Community-directory
+  preflight for manifest, repository, release-asset, catalog-collision, and
+  provenance checks.
+- GitHub artifact attestations for every published release file.
+
+### Changed
+
+- Corrected the declared minimum Obsidian version to 1.7.2, matching the first
+  API version ScottSearch actually uses.
+- Normal release builds now compile out the unreleased on-device model
+  experiment; development builds keep it available for its separate test matrix.
+- Updated settings components and command identifiers to satisfy current
+  Community scanner rules.
+
+### Fixed
+
+- Stopped forcibly detaching an open ScottSearch pane when the plugin unloads.
+
 ## [0.1.0] - 2026-09-13
 
 ### Added
@@ -27,3 +49,4 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Friendly GitHub Pages website with no-code installation and testing guides, a visual roadmap, and live release links.
 
 [0.1.0]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0
+[0.1.1]: https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.1

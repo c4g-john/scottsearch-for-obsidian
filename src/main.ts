@@ -33,6 +33,8 @@ import {
   type ScottSearchSettings,
 } from './settings';
 
+declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
+
 export interface IndexStatus {
   phase: 'idle' | 'lexical' | 'semantic' | 'ready';
   indexedFiles: number;
@@ -55,7 +57,7 @@ export default class ScottSearchPlugin extends Plugin {
   settings: ScottSearchSettings = { ...DEFAULT_SETTINGS };
   readonly lexicalIndex = new RankedSearchIndex();
   readonly semanticIndex = new SemanticIndex();
-  modelAssetManager!: VerifiedModelAssetManager;
+  modelAssetManager?: VerifiedModelAssetManager;
 
   private persistedEmbeddings: SerializedEmbeddingCache = {};
   private status: IndexStatus = {
@@ -75,20 +77,22 @@ export default class ScottSearchPlugin extends Plugin {
   private saveQueue: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
-    const pluginDirectory = this.manifest.dir
-      ?? normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}`);
-    this.modelAssetManager = new VerifiedModelAssetManager(
-      normalizePath(`${pluginDirectory}/model-assets`),
-      ARCTIC_EMBED_XS_INT8,
-      new ObsidianModelAssetStore(this.app.vault.adapter),
-    );
+    if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
+      const pluginDirectory = this.manifest.dir
+        ?? normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}`);
+      this.modelAssetManager = new VerifiedModelAssetManager(
+        normalizePath(`${pluginDirectory}/model-assets`),
+        ARCTIC_EMBED_XS_INT8,
+        new ObsidianModelAssetStore(this.app.vault.adapter),
+      );
+    }
     await this.loadPluginData();
 
     this.registerView(VIEW_TYPE_SCOTTSEARCH, (leaf) => new ScottSearchView(leaf, this));
     this.addRibbonIcon('search', 'Open ScottSearch', () => void this.activateView());
     this.addCommand({
       callback: () => void this.activateView(),
-      id: 'open-scottsearch',
+      id: 'open-search',
       name: 'Open search',
     });
     this.addCommand({
@@ -121,8 +125,7 @@ export default class ScottSearchPlugin extends Plugin {
     this.disposeOnDeviceProvider();
     for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
     if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
-    this.modelAssetManager.cancelInstall();
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_SCOTTSEARCH);
+    this.modelAssetManager?.cancelInstall();
   }
 
   async activateView(query = ''): Promise<void> {
@@ -310,17 +313,21 @@ export default class ScottSearchPlugin extends Plugin {
   private async loadPluginData(): Promise<void> {
     const data = (await this.loadData()) as PersistedData | null;
     this.settings = { ...DEFAULT_SETTINGS, ...(data?.settings ?? {}) };
+    if (!SCOTTSEARCH_ON_DEVICE_EXPERIMENT && this.settings.semanticProvider === 'on-device') {
+      this.settings.semanticProvider = 'ollama';
+    }
     this.persistedEmbeddings = data?.embeddings ?? {};
     this.semanticIndex.load(this.persistedEmbeddings);
     this.status.semanticFiles = this.semanticIndex.size;
   }
 
   private createEmbeddingProvider(): EmbeddingProvider {
-    if (this.settings.semanticProvider === 'on-device') {
+    if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT && this.settings.semanticProvider === 'on-device') {
       if (!Platform.isDesktopApp) {
         throw new Error('The experimental on-device model is available only in Obsidian for desktop.');
       }
       if (!this.onDeviceProvider || this.onDeviceProvider.isDisposed) {
+        if (!this.modelAssetManager) throw new Error('The on-device model manager is unavailable.');
         this.onDeviceProvider = new OnDeviceEmbeddingProvider(this.modelAssetManager);
       }
       return this.onDeviceProvider;

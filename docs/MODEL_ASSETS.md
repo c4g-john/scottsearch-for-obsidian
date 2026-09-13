@@ -1,6 +1,9 @@
 # On-device model files
 
-ScottSearch's development branch includes a guarded download manager and a working desktop-only semantic prototype. The prototype is **off by default and not included in the 0.1.0 human-testing release**. Ollama remains available, and lexical search still needs no model or network access.
+ScottSearch's development branch includes a guarded download manager and a
+working desktop-only semantic prototype. The prototype is **off by default and
+compiled out of normal human-testing releases**. Ollama remains available, and
+lexical search still needs no model or network access.
 
 ## What happens—and what does not
 

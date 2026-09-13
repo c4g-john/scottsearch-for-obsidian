@@ -261,7 +261,7 @@ export class ModelAssetManagerModal extends Modal {
 function addSummaryRow(container: HTMLElement, label: string, value: string): void {
   const row = container.createDiv({ cls: 'scottsearch-model-summary-row' });
   row.createEl('strong', { text: label });
-  row.createEl('span', { text: value });
+  row.createSpan({ text: value });
 }
 
 function updateProgress(

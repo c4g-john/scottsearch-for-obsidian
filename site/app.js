@@ -22,7 +22,7 @@ async function enhanceRelease() {
     });
     if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
     const releases = await response.json();
-    const release = releases.find((item) => item.tag_name === '0.1.0') ?? releases[0];
+    const release = releases.find((item) => !item.draft);
     if (!release) return;
 
     document.querySelectorAll('[data-release-version]').forEach((element) => {

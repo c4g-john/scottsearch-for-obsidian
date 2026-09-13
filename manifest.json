@@ -1,8 +1,8 @@
 {
   "id": "scottsearch",
   "name": "ScottSearch",
-  "version": "0.1.0",
-  "minAppVersion": "1.5.0",
+  "version": "0.1.1",
+  "minAppVersion": "1.7.2",
   "description": "Fast, relevance-ranked vault search with filters, snippets, and keyboard navigation.",
   "author": "c4g-john",
   "authorUrl": "https://github.com/c4g-john",

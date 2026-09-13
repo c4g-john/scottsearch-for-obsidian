@@ -6,22 +6,43 @@ import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { gzipSync } from 'node:zlib';
 
-const production = process.argv[2] === 'production';
+const mode = process.argv[2] ?? 'development-experiment';
+const production = mode === 'production' || mode === 'production-experiment';
+const includeOnDeviceExperiment = mode !== 'production';
 const require = createRequire(import.meta.url);
-const runtimePath = require.resolve('onnxruntime-web/ort-wasm-simd-threaded.wasm');
-const runtimeGluePath = resolve(dirname(runtimePath), 'ort.wasm.bundle.min.mjs');
-const runtimeBytes = readFileSync(runtimePath);
-const runtimeGlueBytes = readFileSync(runtimeGluePath);
-const reviewedRuntimeDigest = 'ec8580a9d7b9476ceee52e10a7f94124e4dc71a019d666ed6d4726697c109a4d';
-const reviewedRuntimeGlueDigest = '7a3913dc5c7a9c3ad1144f5fbfecd402bc5013bcc886bc67664b18d8a15ab298';
-const runtimeDigest = createHash('sha256').update(runtimeBytes).digest('hex');
-const runtimeGlueDigest = createHash('sha256').update(runtimeGlueBytes).digest('hex');
-if (runtimeDigest !== reviewedRuntimeDigest || runtimeGlueDigest !== reviewedRuntimeGlueDigest) {
-  throw new Error(`Refusing to bundle unreviewed ONNX Runtime Web bytes: ${runtimeDigest}/${runtimeGlueDigest}.`);
-}
-const runtimeGzipBase64 = gzipSync(runtimeBytes, { level: 9 }).toString('base64');
 
-const runtimeLicense = `/*!
+let embeddedWorkerPlugin;
+let workerSummary;
+
+const disabledWorkerPlugin = {
+  name: 'scottsearch-disabled-worker',
+  setup(build) {
+    build.onResolve({ filter: /^scottsearch:on-device-worker-source$/ }, () => ({
+      namespace: 'scottsearch-disabled-worker',
+      path: 'on-device-worker-source',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'scottsearch-disabled-worker' }, () => ({
+      contents: 'export default "";',
+      loader: 'js',
+    }));
+  },
+};
+
+if (includeOnDeviceExperiment) {
+  const runtimePath = require.resolve('onnxruntime-web/ort-wasm-simd-threaded.wasm');
+  const runtimeGluePath = resolve(dirname(runtimePath), 'ort.wasm.bundle.min.mjs');
+  const runtimeBytes = readFileSync(runtimePath);
+  const runtimeGlueBytes = readFileSync(runtimeGluePath);
+  const reviewedRuntimeDigest = 'ec8580a9d7b9476ceee52e10a7f94124e4dc71a019d666ed6d4726697c109a4d';
+  const reviewedRuntimeGlueDigest = '7a3913dc5c7a9c3ad1144f5fbfecd402bc5013bcc886bc67664b18d8a15ab298';
+  const runtimeDigest = createHash('sha256').update(runtimeBytes).digest('hex');
+  const runtimeGlueDigest = createHash('sha256').update(runtimeGlueBytes).digest('hex');
+  if (runtimeDigest !== reviewedRuntimeDigest || runtimeGlueDigest !== reviewedRuntimeGlueDigest) {
+    throw new Error(`Refusing to bundle unreviewed ONNX Runtime Web bytes: ${runtimeDigest}/${runtimeGlueDigest}.`);
+  }
+  const runtimeGzipBase64 = gzipSync(runtimeBytes, { level: 9 }).toString('base64');
+
+  const runtimeLicense = `/*!
 ONNX Runtime Web 1.29.0
 Copyright (c) Microsoft Corporation. All rights reserved.
 
@@ -44,85 +65,90 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */`;
 
-const embeddedRuntimePlugin = {
-  name: 'scottsearch-embedded-runtime',
-  setup(build) {
-    build.onResolve({ filter: /^scottsearch:ort-wasm-gzip-base64$/ }, () => ({
-      namespace: 'scottsearch-runtime',
-      path: 'ort-wasm-gzip-base64',
-    }));
-    build.onLoad({ filter: /.*/, namespace: 'scottsearch-runtime' }, () => ({
-      contents: `export default ${JSON.stringify(runtimeGzipBase64)};`,
-      loader: 'js',
-    }));
-  },
-};
+  const embeddedRuntimePlugin = {
+    name: 'scottsearch-embedded-runtime',
+    setup(build) {
+      build.onResolve({ filter: /^scottsearch:ort-wasm-gzip-base64$/ }, () => ({
+        namespace: 'scottsearch-runtime',
+        path: 'ort-wasm-gzip-base64',
+      }));
+      build.onLoad({ filter: /.*/, namespace: 'scottsearch-runtime' }, () => ({
+        contents: `export default ${JSON.stringify(runtimeGzipBase64)};`,
+        loader: 'js',
+      }));
+    },
+  };
 
-const workerBuild = await esbuild.build({
-  banner: { js: runtimeLicense },
-  bundle: true,
-  entryPoints: ['src/on-device/worker.ts'],
-  format: 'iife',
-  legalComments: 'none',
-  logLevel: 'silent',
-  metafile: true,
-  minify: true,
-  platform: 'browser',
-  plugins: [embeddedRuntimePlugin],
-  target: 'es2021',
-  treeShaking: true,
-  write: false,
-});
-const workerSource = workerBuild.outputFiles[0]?.text;
-if (!workerSource) throw new Error('Unable to build the on-device embedding worker.');
-const workerInputs = Object.keys(workerBuild.metafile.inputs).sort();
-const unreviewedWorkerInput = workerInputs.find((path) => (
-  path.startsWith('node_modules/')
-  && !path.startsWith('node_modules/onnxruntime-common/')
-  && !path.startsWith('node_modules/onnxruntime-web/')
-));
-if (unreviewedWorkerInput) {
-  throw new Error(`Refusing to bundle unreviewed worker dependency: ${unreviewedWorkerInput}.`);
-}
-const runtimeModuleInputs = workerInputs.filter((path) => path.startsWith('node_modules/'));
-if (runtimeModuleInputs.length !== 1 || !runtimeModuleInputs[0]?.endsWith('/onnxruntime-web/dist/ort.wasm.bundle.min.mjs')) {
-  throw new Error(`The worker runtime input set changed: ${runtimeModuleInputs.join(', ')}.`);
-}
-if (process.argv[2] === 'worker-harness') {
-  mkdirSync('research/on-device-embeddings/dist', { recursive: true });
-  writeFileSync('research/on-device-embeddings/dist/scottsearch-worker.js', workerSource);
-  console.log(`Wrote reviewed ${(Buffer.byteLength(workerSource) / 1_000_000).toFixed(1)} MB worker harness from ${workerInputs.length} audited inputs.`);
-  console.log(workerInputs.join('\n'));
-  process.exit(0);
-}
+  const workerBuild = await esbuild.build({
+    banner: { js: runtimeLicense },
+    bundle: true,
+    entryPoints: ['src/on-device/worker.ts'],
+    format: 'iife',
+    legalComments: 'none',
+    logLevel: 'silent',
+    metafile: true,
+    minify: true,
+    platform: 'browser',
+    plugins: [embeddedRuntimePlugin],
+    target: 'es2021',
+    treeShaking: true,
+    write: false,
+  });
+  const workerSource = workerBuild.outputFiles[0]?.text;
+  if (!workerSource) throw new Error('Unable to build the on-device embedding worker.');
+  const workerInputs = Object.keys(workerBuild.metafile.inputs).sort();
+  const unreviewedWorkerInput = workerInputs.find((path) => (
+    path.startsWith('node_modules/')
+    && !path.startsWith('node_modules/onnxruntime-common/')
+    && !path.startsWith('node_modules/onnxruntime-web/')
+  ));
+  if (unreviewedWorkerInput) {
+    throw new Error(`Refusing to bundle unreviewed worker dependency: ${unreviewedWorkerInput}.`);
+  }
+  const runtimeModuleInputs = workerInputs.filter((path) => path.startsWith('node_modules/'));
+  if (runtimeModuleInputs.length !== 1 || !runtimeModuleInputs[0]?.endsWith('/onnxruntime-web/dist/ort.wasm.bundle.min.mjs')) {
+    throw new Error(`The worker runtime input set changed: ${runtimeModuleInputs.join(', ')}.`);
+  }
+  if (mode === 'worker-harness') {
+    mkdirSync('research/on-device-embeddings/dist', { recursive: true });
+    writeFileSync('research/on-device-embeddings/dist/scottsearch-worker.js', workerSource);
+    console.log(`Wrote reviewed ${(Buffer.byteLength(workerSource) / 1_000_000).toFixed(1)} MB worker harness from ${workerInputs.length} audited inputs.`);
+    console.log(workerInputs.join('\n'));
+    process.exit(0);
+  }
 
-const embeddedWorkerPlugin = {
-  name: 'scottsearch-embedded-worker',
-  setup(build) {
-    build.onResolve({ filter: /^scottsearch:on-device-worker-source$/ }, () => ({
-      namespace: 'scottsearch-worker',
-      path: 'on-device-worker-source',
-    }));
-    build.onLoad({ filter: /.*/, namespace: 'scottsearch-worker' }, () => ({
-      contents: `export default ${JSON.stringify(workerSource)};`,
-      loader: 'js',
-      watchFiles: [
-        runtimePath,
-        'src/on-device/bert-tokenizer.ts',
-        'src/on-device/embedding-core.ts',
-        'src/on-device/protocol.ts',
-        'src/on-device/runtime-metadata.ts',
-        'src/on-device/worker.ts',
-      ],
-    }));
-  },
-};
+  embeddedWorkerPlugin = {
+    name: 'scottsearch-embedded-worker',
+    setup(build) {
+      build.onResolve({ filter: /^scottsearch:on-device-worker-source$/ }, () => ({
+        namespace: 'scottsearch-worker',
+        path: 'on-device-worker-source',
+      }));
+      build.onLoad({ filter: /.*/, namespace: 'scottsearch-worker' }, () => ({
+        contents: `export default ${JSON.stringify(workerSource)};`,
+        loader: 'js',
+        watchFiles: [
+          runtimePath,
+          'src/on-device/bert-tokenizer.ts',
+          'src/on-device/embedding-core.ts',
+          'src/on-device/protocol.ts',
+          'src/on-device/runtime-metadata.ts',
+          'src/on-device/worker.ts',
+        ],
+      }));
+    },
+  };
+  workerSummary = `Reviewed on-device worker: ${(Buffer.byteLength(workerSource) / 1_000_000).toFixed(1)} MB embedded (${runtimeDigest.slice(0, 12)}…).`;
+}
 
 const context = await esbuild.context({
   banner: {
     js: '/* ScottSearch for Obsidian — generated bundle. Source: https://github.com/c4g-john/scottsearch-for-obsidian */',
   },
   bundle: true,
+  define: {
+    SCOTTSEARCH_ON_DEVICE_EXPERIMENT: JSON.stringify(includeOnDeviceExperiment),
+  },
   entryPoints: ['src/main.ts'],
   external: [
     'obsidian',
@@ -144,13 +170,13 @@ const context = await esbuild.context({
   logLevel: 'info',
   minify: production,
   outfile: 'main.js',
-  plugins: [embeddedWorkerPlugin],
+  plugins: [embeddedWorkerPlugin ?? disabledWorkerPlugin],
   sourcemap: production ? false : 'inline',
   target: 'es2021',
   treeShaking: true,
 });
 
-console.log(`Reviewed on-device worker: ${(Buffer.byteLength(workerSource) / 1_000_000).toFixed(1)} MB embedded (${runtimeDigest.slice(0, 12)}…).`);
+console.log(workerSummary ?? 'Release-safe build: the unreleased on-device experiment is excluded.');
 if (production) {
   await context.rebuild();
   await context.dispose();

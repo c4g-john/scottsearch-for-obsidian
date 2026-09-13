@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -21,10 +23,15 @@ jobs:
       - run: npm run check
       - name: Package the platform-neutral plugin bundle
         run: |
-          mkdir -p "release/scottsearch"
+          mkdir -p "release/scottsearch" "release/assets"
           cp main.js manifest.json styles.css LICENSE THIRD_PARTY_NOTICES.md "release/scottsearch/"
+          cp main.js manifest.json styles.css LICENSE THIRD_PARTY_NOTICES.md "release/assets/"
           cd release
-          zip -r "scottsearch-${GITHUB_REF_NAME}.zip" scottsearch
+          zip -r "assets/scottsearch-${GITHUB_REF_NAME}.zip" scottsearch
+      - name: Attest the published release files
+        uses: actions/attest@v4
+        with:
+          subject-path: "release/assets/*"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,8 +49,7 @@ jobs:
           fi
 
           gh release create "$GITHUB_REF_NAME" \
-            main.js manifest.json styles.css LICENSE THIRD_PARTY_NOTICES.md \
-            "release/scottsearch-${GITHUB_REF_NAME}.zip" \
+            release/assets/* \
             --title "ScottSearch ${GITHUB_REF_NAME}" \
             --verify-tag \
             "${release_flags[@]}"

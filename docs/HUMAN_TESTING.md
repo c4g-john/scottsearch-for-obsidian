@@ -64,7 +64,7 @@ Expected: meaning-based matches improve when Ollama is available. When it is una
 
 ### 5a. Try the unreleased on-device experiment (development testers only)
 
-Skip this section when using the 0.1.0 release or a phone/tablet. The prototype is
+Skip this section when using a normal GitHub release or a phone/tablet. The prototype is
 not yet cleared for a public download. If a maintainer has given you a later
 development build for desktop testing:
 

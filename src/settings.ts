@@ -4,6 +4,8 @@ import type ScottSearchPlugin from './main';
 import { ModelAssetManagerModal } from './model-assets/modal';
 import { formatModelBytes, type ModelAssetStatus } from './model-assets/verified-model-manager';
 
+declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
+
 export interface ScottSearchSettings {
   resultLimit: number;
   searchDelayMs: number;
@@ -40,7 +42,7 @@ export class ScottSearchSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'ScottSearch' });
+    new Setting(containerEl).setName('Search behavior').setHeading();
     containerEl.createEl('p', {
       cls: 'setting-item-description',
       text: 'Tune deliberate search and keep control of where your note content is processed.',
@@ -52,7 +54,6 @@ export class ScottSearchSettingTab extends PluginSettingTab {
       .addSlider((slider) => slider
         .setLimits(5, 50, 5)
         .setValue(this.plugin.settings.resultLimit)
-        .setDynamicTooltip()
         .onChange(async (value) => {
           this.plugin.settings.resultLimit = value;
           await this.plugin.savePluginData();
@@ -99,26 +100,30 @@ export class ScottSearchSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Local semantic search').setHeading();
     containerEl.createEl('p', {
       cls: 'setting-item-description',
-      text: 'Choose whether meaning is calculated by your Ollama endpoint or, on desktop, inside an experimental ScottSearch worker.',
+      text: SCOTTSEARCH_ON_DEVICE_EXPERIMENT
+        ? 'Choose whether meaning is calculated by your Ollama endpoint or, on desktop, inside an experimental ScottSearch worker.'
+        : 'Meaning is calculated by the Ollama endpoint you choose. Lexical search remains entirely inside Obsidian.',
     });
 
-    const providerSetting = new Setting(containerEl)
-      .setName('Semantic provider')
-      .setDesc('Existing installations stay on Ollama unless you explicitly choose the experiment.')
-      .addDropdown((dropdown) => {
-        dropdown.addOption('ollama', 'Ollama (local endpoint)');
-        if (Platform.isDesktopApp) dropdown.addOption('on-device', 'On-device model (experimental)');
-        dropdown
-          .setValue(this.plugin.settings.semanticProvider)
-          .onChange(async (value) => {
-            this.plugin.settings.semanticProvider = value as SemanticProviderId;
-            await this.plugin.savePluginData();
-            this.display();
-            await this.plugin.semanticConfigurationChanged();
-          });
-      });
-    if (!Platform.isDesktopApp && this.plugin.settings.semanticProvider === 'on-device') {
-      providerSetting.setDesc('The saved on-device experiment is unavailable on mobile. Search will use lexical ranking until you choose Ollama.');
+    if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
+      const providerSetting = new Setting(containerEl)
+        .setName('Semantic provider')
+        .setDesc('Existing installations stay on Ollama unless you explicitly choose the experiment.')
+        .addDropdown((dropdown) => {
+          dropdown.addOption('ollama', 'Ollama (local endpoint)');
+          if (Platform.isDesktopApp) dropdown.addOption('on-device', 'On-device model (experimental)');
+          dropdown
+            .setValue(this.plugin.settings.semanticProvider)
+            .onChange(async (value) => {
+              this.plugin.settings.semanticProvider = value as SemanticProviderId;
+              await this.plugin.savePluginData();
+              this.display();
+              await this.plugin.semanticConfigurationChanged();
+            });
+        });
+      if (!Platform.isDesktopApp && this.plugin.settings.semanticProvider === 'on-device') {
+        providerSetting.setDesc('The saved on-device experiment is unavailable on mobile. Search will use lexical ranking until you choose Ollama.');
+      }
     }
 
     new Setting(containerEl)
@@ -164,51 +169,56 @@ export class ScottSearchSettingTab extends PluginSettingTab {
       .addSlider((slider) => slider
         .setLimits(0, 100, 5)
         .setValue(Math.round(this.plugin.settings.semanticWeight * 100))
-        .setDynamicTooltip()
         .onChange(async (value) => {
           this.plugin.settings.semanticWeight = value / 100;
           await this.plugin.savePluginData();
         }));
 
-    new Setting(containerEl).setName('On-device model experiment').setHeading();
-    if (!Platform.isDesktopApp) {
-      containerEl.createEl('p', {
-        cls: 'setting-item-description',
-        text: 'On-device model files are unavailable on phones and tablets while compatibility, memory, heat, and battery use are tested. Ollama and lexical settings above are unchanged.',
-      });
-    } else {
-      containerEl.createEl('p', {
-        cls: 'setting-item-description',
-        text: 'Download the reviewed model, then choose “On-device model” above to calculate meaning in a background worker. Note text never leaves Obsidian in this mode.',
-      });
-      const modelSetting = new Setting(containerEl)
-        .setName('Experimental model files')
-        .setDesc('Checking local files…');
-      let actionButtonText = 'Review model files';
-      modelSetting.addButton((button) => {
-        button
-          .setButtonText(actionButtonText)
-          .onClick(() => {
-            new ModelAssetManagerModal(this.app, this.plugin.modelAssetManager, () => {
-              this.plugin.modelAssetsChanged();
-              this.display();
-            }).open();
-          });
-        void this.plugin.modelAssetManager.getStatus(false).then((status) => {
-          if (!modelSetting.settingEl.isConnected) return;
-          modelSetting.setDesc(describeModelAssets(status, this.plugin.modelAssetManager.totalBytes));
-          actionButtonText = status.state === 'ready'
-            ? 'Manage model files'
-            : status.state === 'invalid'
-              ? 'Repair model files'
-              : 'Review download';
-          button.setButtonText(actionButtonText);
-        }).catch(() => {
-          if (modelSetting.settingEl.isConnected) {
-            modelSetting.setDesc('ScottSearch could not check the local model files. Open the manager for details.');
-          }
+    if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
+      new Setting(containerEl).setName('On-device model experiment').setHeading();
+      if (!Platform.isDesktopApp) {
+        containerEl.createEl('p', {
+          cls: 'setting-item-description',
+          text: 'On-device model files are unavailable on phones and tablets while compatibility, memory, heat, and battery use are tested. Ollama and lexical settings above are unchanged.',
         });
-      });
+      } else if (this.plugin.modelAssetManager) {
+        containerEl.createEl('p', {
+          cls: 'setting-item-description',
+          text: 'Download the reviewed model, then choose “On-device model” above to calculate meaning in a background worker. Note text never leaves Obsidian in this mode.',
+        });
+        const modelSetting = new Setting(containerEl)
+          .setName('Experimental model files')
+          .setDesc('Checking local files…');
+        let actionButtonText = 'Review model files';
+        modelSetting.addButton((button) => {
+          button
+            .setButtonText(actionButtonText)
+            .onClick(() => {
+              const manager = this.plugin.modelAssetManager;
+              if (!manager) return;
+              new ModelAssetManagerModal(this.app, manager, () => {
+                this.plugin.modelAssetsChanged();
+                this.display();
+              }).open();
+            });
+          const manager = this.plugin.modelAssetManager;
+          if (!manager) return;
+          void manager.getStatus(false).then((status) => {
+            if (!modelSetting.settingEl.isConnected) return;
+            modelSetting.setDesc(describeModelAssets(status, manager.totalBytes));
+            actionButtonText = status.state === 'ready'
+              ? 'Manage model files'
+              : status.state === 'invalid'
+                ? 'Repair model files'
+                : 'Review download';
+            button.setButtonText(actionButtonText);
+          }).catch(() => {
+            if (modelSetting.settingEl.isConnected) {
+              modelSetting.setDesc('ScottSearch could not check the local model files. Open the manager for details.');
+            }
+          });
+        });
+      }
     }
 
     new Setting(containerEl)

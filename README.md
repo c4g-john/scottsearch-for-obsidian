@@ -68,7 +68,11 @@ If Ollama is stopped, the model is missing, or the response is invalid, the sear
 
 ## Experimental on-device semantic search
 
-The unreleased development branch contains a working desktop-only prototype. It is not part of the 0.1.0 download, is off by default, and remains blocked from a testing release until the [macOS, Windows, and Linux Obsidian matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21) is complete.
+The unreleased development branch contains a working desktop-only prototype. It
+is compiled out of normal release downloads, is off by default in experimental
+builds, and remains blocked from a testing release until the
+[macOS, Windows, and Linux Obsidian matrix](https://github.com/c4g-john/scottsearch-for-obsidian/issues/21)
+is complete.
 
 On desktop, **Settings → ScottSearch → On-device model experiment** lets an interested development tester review a 23.7 MB Snowflake Arctic Embed XS download. Nothing downloads until a second explicit confirmation. Every required file is pinned to an immutable revision, limited to an exact size, verified with SHA-256 in staging, and activated only after the whole set passes. Choosing **On-device model (experimental)** then performs model loading, tokenization, note chunking, and inference in a dedicated worker.
 
@@ -96,7 +100,10 @@ ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and A
 3. Paste `c4g-john/scottsearch-for-obsidian`.
 4. Enable **ScottSearch** under **Settings → Community plugins**.
 
-Alternatively, download `scottsearch-0.1.0.zip` from the [0.1.0 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.0). Unzip it and place the contained `scottsearch` folder inside `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
+Alternatively, download `scottsearch-0.1.1.zip` from the
+[0.1.1 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.1).
+Unzip it and place the contained `scottsearch` folder inside
+`<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
 
 Back up important notes before testing pre-release software. ScottSearch never changes note contents, and disabling or removing it does not delete notes.
 
@@ -104,7 +111,7 @@ The [complete human-testing checklist](docs/HUMAN_TESTING.md) covers desktop, mo
 
 ## Install for development
 
-ScottSearch requires Obsidian 1.5 or later. Building from source requires Node.js 22.12 or newer.
+ScottSearch requires Obsidian 1.7.2 or later. Building from source requires Node.js 22.12 or newer.
 
 ```sh
 git clone https://github.com/c4g-john/scottsearch-for-obsidian.git
@@ -145,7 +152,12 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening implementation wor
 npm run check
 ```
 
-That command runs typed linting, the unit test suite, TypeScript validation, and the production bundle. CI runs the same checks on pushes and pull requests.
+That command runs Obsidian's official plugin lint rules, the unit test suite,
+TypeScript validation, the release-safe production bundle, Community-directory
+metadata and provenance checks, and the website syntax check. CI runs the same
+gate on pushes and pull requests. The
+[Community submission runbook](docs/COMMUNITY_SUBMISSION.md) explains the
+additional live and human gates.
 
 Run `npm run benchmark` to print the synthetic lexical-versus-hybrid relevance scorecard. The [benchmark guide](benchmarks/README.md) explains the metrics, deterministic semantic fixtures, privacy boundary, and how to add a safe regression case.
 
