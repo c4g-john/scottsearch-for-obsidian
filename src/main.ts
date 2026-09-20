@@ -11,6 +11,11 @@ import {
 } from 'obsidian';
 
 import { OllamaEmbeddingProvider } from './ollama-provider';
+import {
+  INDEX_READ_BATCH_SIZE,
+  IndexStartupCoordinator,
+  runBatched,
+} from './index-lifecycle';
 import { ARCTIC_EMBED_XS_INT8 } from './model-assets/manifest';
 import { ObsidianModelAssetStore } from './model-assets/obsidian-store';
 import {
@@ -84,6 +89,10 @@ export default class ScottSearchPlugin extends Plugin {
   private semanticUpdateTimer?: number;
   private onDeviceProvider?: OnDeviceEmbeddingProvider;
   private saveQueue: Promise<void> = Promise.resolve();
+  private readonly startupIndex = new IndexStartupCoordinator({
+    clear: (handle) => window.clearTimeout(handle),
+    set: (callback, delayMs) => window.setTimeout(callback, delayMs),
+  });
 
   async onload(): Promise<void> {
     if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
@@ -124,10 +133,14 @@ export default class ScottSearchPlugin extends Plugin {
     }));
     this.registerEvent(this.app.metadataCache.on('changed', (file) => this.queueFileUpdate(file)));
 
-    this.app.workspace.onLayoutReady(() => void this.rebuildIndex());
+    this.app.workspace.onLayoutReady(() => {
+      if (this.status.phase !== 'idle') return;
+      this.startupIndex.afterLayoutReady(() => void this.rebuildIndex());
+    });
   }
 
   onunload(): void {
+    this.startupIndex.cancel();
     this.indexGeneration += 1;
     this.semanticGeneration += 1;
     this.semanticAbortController?.abort();
@@ -145,10 +158,12 @@ export default class ScottSearchPlugin extends Plugin {
       await leaf.setViewState({ active: true, type: VIEW_TYPE_SCOTTSEARCH });
     }
     await this.app.workspace.revealLeaf(leaf);
+    this.startIndexNow();
     if (leaf.view instanceof ScottSearchView) leaf.view.setQuery(query);
   }
 
   async search(rawQuery: string, sort: SortMode, filters: ResultFilters): Promise<SearchExecution> {
+    this.startIndexNow();
     const query = parseQuery(rawQuery);
     let semanticScores: Map<string, number> | undefined;
     let fallbackReason: string | undefined;
@@ -195,6 +210,7 @@ export default class ScottSearchPlugin extends Plugin {
   }
 
   async rebuildIndex(): Promise<void> {
+    this.startupIndex.cancel();
     const generation = ++this.indexGeneration;
     this.semanticGeneration += 1;
     this.semanticAbortController?.abort();
@@ -205,15 +221,13 @@ export default class ScottSearchPlugin extends Plugin {
     const files = this.app.vault.getMarkdownFiles().filter((file) => !this.isIgnored(file.path));
     this.setStatus({ indexedFiles: 0, phase: 'lexical', semanticFiles: 0, totalFiles: files.length });
 
-    for (let offset = 0; offset < files.length; offset += 20) {
-      if (generation !== this.indexGeneration) return;
-      const batch = files.slice(offset, offset + 20);
-      await Promise.all(batch.map(async (file) => this.indexFile(file)));
-      this.setStatus({ ...this.status, indexedFiles: Math.min(offset + batch.length, files.length) });
-      await yieldToEventLoop();
-    }
-
-    if (generation !== this.indexGeneration) return;
+    const completed = await runBatched(files, async (file) => this.indexFile(file), {
+      batchSize: INDEX_READ_BATCH_SIZE,
+      isCurrent: () => generation === this.indexGeneration,
+      onBatchComplete: (indexedFiles) => this.setStatus({ ...this.status, indexedFiles }),
+      yieldControl: yieldToEventLoop,
+    });
+    if (!completed) return;
     if (this.settings.semanticEnabled) await this.rebuildSemanticIndex();
     else this.setStatus({ ...this.status, phase: 'ready', semanticFiles: this.semanticIndex.size });
   }
@@ -353,6 +367,11 @@ export default class ScottSearchPlugin extends Plugin {
   private disposeOnDeviceProvider(): void {
     this.onDeviceProvider?.dispose();
     this.onDeviceProvider = undefined;
+  }
+
+  private startIndexNow(): void {
+    if (this.status.phase !== 'idle') return;
+    this.startupIndex.runNow(() => void this.rebuildIndex());
   }
 
   private async indexFile(file: TFile): Promise<void> {

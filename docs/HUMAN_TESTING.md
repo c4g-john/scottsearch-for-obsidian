@@ -14,6 +14,21 @@ ScottSearch reads notes to build its search index. It does not change note conte
 
 Use whichever desktop and mobile devices are available to you. The friendly test-report form asks for the operating system, Obsidian version, approximate note count, and theme without asking for private vault details.
 
+### 0. Restart and watch workspace restoration
+
+- Enable ScottSearch, close Obsidian normally, and start it again.
+- Confirm that the normal workspace becomes usable before ScottSearch begins a
+  full-vault index.
+- Wait about five seconds and open **Settings → ScottSearch** to watch **Index
+  status**, or open ScottSearch immediately to start indexing on demand.
+- While indexing advances, switch notes, type in an editor, and open settings.
+
+Expected: workspace restoration does not appear stuck waiting for ScottSearch.
+Automatic indexing starts after the short grace period; explicitly opening or
+using ScottSearch starts it immediately. The interface remains responsive while
+notes are indexed in small batches. Record an approximate note-count range and
+startup/index timing if practical; **Not measured** is acceptable.
+
 ### 1. Find a remembered idea
 
 - Open ScottSearch from the ribbon or run **ScottSearch: Open search**.
@@ -114,7 +129,7 @@ Expected: input, filters, result titles, snippets, scores, and controls remain r
 - Create or edit a fictional note containing an unusual test phrase.
 - Search for it, rename it, search again, and then delete it.
 
-Expected: the index follows creates, edits, renames, and deletions without a manual restart.
+Expected: the index follows creates, edits, renames, and deletions without a manual restart. These incremental updates still work after the deferred startup index completes.
 
 ### 8. Disable and remove the plugin
 

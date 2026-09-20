@@ -18,6 +18,7 @@ Visit the [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-
 - Filters an existing result set by folder, tag, or recent modification without recomputing embeddings.
 - Cycles cached results through title-only, default, and verbose detail without rerunning search.
 - Lets you choose how many source characters verbose previews show before and after the first matching phrase or term.
+- Lets Obsidian finish restoring the workspace before automatic full-vault indexing begins, then reads notes in small yielding batches.
 - Updates its index when notes are created, modified, renamed, or deleted.
 - Opens as a native Obsidian view and follows the active theme on desktop and mobile-sized panes.
 
@@ -102,14 +103,24 @@ ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and A
 3. Paste `c4g-john/scottsearch-for-obsidian`.
 4. Enable **ScottSearch** under **Settings → Community plugins**.
 
-Alternatively, download `scottsearch-0.1.3.zip` from the
-[0.1.3 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.3).
+Alternatively, download `scottsearch-0.1.4.zip` from the
+[0.1.4 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.4).
 Unzip it and place the contained `scottsearch` folder inside
 `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
 
 Back up important notes before testing pre-release software. ScottSearch never changes note contents, and disabling or removing it does not delete notes.
 
 The [complete human-testing checklist](docs/HUMAN_TESTING.md) covers desktop, mobile, lexical and semantic search, keyboard navigation, filters, index updates, and safe removal.
+
+### Startup and indexing
+
+After Obsidian restores the workspace, ScottSearch waits about five seconds
+before it starts automatic indexing. Opening or searching with ScottSearch
+starts the index immediately instead. Notes are read four at a time and the
+plugin yields between batches so a large vault does not monopolize the main
+event loop. **Settings → ScottSearch → Index status** shows progress. This
+startup scheduling changes only when work begins; note contents still remain
+local and ScottSearch never edits them.
 
 ## Install for development
 

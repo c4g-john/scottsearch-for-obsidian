@@ -151,10 +151,10 @@
             <h3>Download the ZIP</h3>
             <p>The ZIP contains the three plugin files Obsidian needs; the repository also carries readable license information. This route is useful when BRAT is not an option, but it requires access to your vault's hidden plugin folder.</p>
             <div class="release-version-row">
-              <div><span>Human-testing release</span><strong data-release-version>0.1.3</strong></div>
+              <div><span>Human-testing release</span><strong data-release-version>0.1.4</strong></div>
               <span class="release-state">Pre-release</span>
             </div>
-            <a class="button button-light" data-release-download href="https://github.com/c4g-john/scottsearch-for-obsidian/releases/download/0.1.3/scottsearch-0.1.3.zip">Download ScottSearch 0.1.3</a>
+            <a class="button button-light" data-release-download href="https://github.com/c4g-john/scottsearch-for-obsidian/releases/download/0.1.4/scottsearch-0.1.4.zip">Download ScottSearch 0.1.4</a>
             <details class="manual-details">
               <summary>Show manual installation steps</summary>
               <ol>
@@ -194,6 +194,7 @@
             <h3>Real-vault feedback</h3>
             <p>We are learning which results feel useful, how much preview context helps, and what breaks across devices.</p>
             <a href="https://github.com/c4g-john/scottsearch-for-obsidian/issues/20">Beta program <span data-issue-state="20">active</span></a>
+            <a href="https://github.com/c4g-john/scottsearch-for-obsidian/issues/35">Startup indexing fix <span data-issue-state="35">testing</span></a>
           </article>
           <article class="roadmap-stage stage-next">
             <div class="stage-marker"><span>03</span></div>
@@ -226,6 +227,7 @@
           <li><span>4</span><div><h3>Use your keyboard</h3><p>Move with arrow keys, open with Enter, open a new tab with modifier-Enter, and clear with Escape.</p></div></li>
           <li><span>5</span><div><h3>Try a failure</h3><p>If you use Ollama, stop it briefly. ScottSearch should explain the problem and keep searching by wording.</p></div></li>
         </ol>
+        <p class="privacy-reminder"><strong>Also restart once:</strong> your workspace should become usable before automatic indexing begins. ScottSearch waits briefly, then reads notes in small batches; opening ScottSearch starts it immediately.</p>
         <p class="privacy-reminder"><strong>A successful test is useful too:</strong> the short beta form records which platform, theme, vault-size range, and search mode worked. Approximate answers are welcome, and you can choose “Not measured” for timings.</p>
         <div class="test-actions">
           <a class="button button-lime" href="https://github.com/c4g-john/scottsearch-for-obsidian/issues/new?template=beta_test_report.yml">Share a test pass</a>
@@ -268,12 +270,12 @@
         <div class="release-panel">
           <div>
             <p class="eyebrow">Latest download</p>
-            <h2>ScottSearch <span data-release-version>0.1.3</span></h2>
-            <p>The result-detail patch: Verbose now reliably expands beyond the Default preview without repeating the search.</p>
+            <h2>ScottSearch <span data-release-version>0.1.4</span></h2>
+            <p>The startup patch: workspace restoration gets a grace period, and large-vault indexing now runs in smaller yielding batches.</p>
             <p class="release-date" data-release-date>Prepared September 2026</p>
           </div>
           <div class="release-actions">
-            <a class="button button-primary" data-release-download href="https://github.com/c4g-john/scottsearch-for-obsidian/releases/download/0.1.3/scottsearch-0.1.3.zip">Download the ZIP</a>
+            <a class="button button-primary" data-release-download href="https://github.com/c4g-john/scottsearch-for-obsidian/releases/download/0.1.4/scottsearch-0.1.4.zip">Download the ZIP</a>
             <a class="text-link" href="https://github.com/c4g-john/scottsearch-for-obsidian/releases">All releases and individual files</a>
             <span class="live-status" id="release-live-status">Static release information shown</span>
           </div>
