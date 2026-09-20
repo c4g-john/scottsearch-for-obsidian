@@ -132,13 +132,15 @@ function loadDocuments(entries: CatalogEntry[]): SearchDocument[] {
   return entries.map((entry) => {
     const pathParts = entry.path.split('/');
     const filename = pathParts[pathParts.length - 1] ?? entry.path;
+    const content = readFileSync(resolve(benchmarkRoot, 'corpus', entry.file), 'utf8');
     return {
       basename: filename.replace(/\.md$/u, ''),
-      content: readFileSync(resolve(benchmarkRoot, 'corpus', entry.file), 'utf8'),
+      content,
       ctime: localDate(entry.ctime),
       extension: 'md',
       mtime: localDate(entry.mtime),
       path: entry.path,
+      size: content.length,
       tags: entry.tags,
     };
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { parseQuery } from '../src/query';
 import { RankedSearchIndex, type SearchDocument } from '../src/search-engine';
 
 const DAY = 86_400_000;
@@ -13,6 +14,7 @@ function note(overrides: Partial<SearchDocument> & Pick<SearchDocument, 'path' |
     ctime: NOW - 30 * DAY,
     extension: 'md',
     mtime: NOW - 2 * DAY,
+    size: overrides.content.length,
     tags: [],
     ...overrides,
   };
@@ -168,5 +170,36 @@ describe('RankedSearchIndex', () => {
     }).results[0];
 
     expect(result?.verboseSnippet).toBe('A fictional opening with no literal query term later.');
+  });
+
+  it('restores derived lexical data without persisting note bodies', () => {
+    const source = createIndex();
+    const serialized = source.serialize();
+    const restored = new RankedSearchIndex();
+    restored.load(serialized);
+
+    expect(serialized.documents.every((document) => !('content' in document))).toBe(true);
+    expect(restored.search('consensus', { now: NOW }).results.map((result) => result.path)).toEqual([
+      'Engineering/Consensus protocol.md',
+      'Archive/Old distributed systems.md',
+    ]);
+    expect(restored.pathsMissingContent(['Engineering/Consensus protocol.md'])).toEqual([
+      'Engineering/Consensus protocol.md',
+    ]);
+  });
+
+  it('identifies exact-phrase candidates for lazy body hydration', () => {
+    const content = 'An alpha exact phrase omega appears in this synthetic note.';
+    const source = new RankedSearchIndex();
+    source.upsert(note({ content, path: 'Phrase.md' }));
+    const restored = new RankedSearchIndex();
+    restored.load(source.serialize());
+    const query = parseQuery('+"exact phrase"');
+
+    expect(restored.phraseContentCandidates(query)).toEqual(['Phrase.md']);
+    expect(restored.searchParsed(query).results).toEqual([]);
+
+    restored.upsert(note({ content, path: 'Phrase.md' }));
+    expect(restored.searchParsed(query).results.map((result) => result.path)).toEqual(['Phrase.md']);
   });
 });

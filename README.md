@@ -18,7 +18,7 @@ Visit the [friendly ScottSearch website](https://c4g-john.github.io/scottsearch-
 - Filters an existing result set by folder, tag, or recent modification without recomputing embeddings.
 - Cycles cached results through title-only, default, and verbose detail without rerunning search.
 - Lets you choose how many source characters verbose previews show before and after the first matching phrase or term.
-- Lets Obsidian finish restoring the workspace before automatic full-vault indexing begins, then reads notes in small yielding batches.
+- Restores a compressed local lexical snapshot, compares inexpensive file fingerprints after startup, and reads only new or changed notes on a normal warm launch.
 - Updates its index when notes are created, modified, renamed, or deleted.
 - Opens as a native Obsidian view and follows the active theme on desktop and mobile-sized panes.
 
@@ -84,6 +84,9 @@ The model download contains data, does not read or upload notes, and does not up
 ## Privacy
 
 - Lexical indexing happens inside Obsidian.
+- The local lexical cache stores compressed titles, paths, tags, file fingerprints,
+  and derived term counts in ScottSearch's vault plugin folder. It does not store
+  a second copy of note bodies and never leaves the device.
 - Semantic search is disabled until you enable it.
 - With Ollama selected, text is sent only to the endpoint shown in settings.
 - With the unreleased on-device experiment selected, text is processed in a dedicated worker inside Obsidian and is not uploaded.
@@ -103,8 +106,8 @@ ScottSearch uses one plugin bundle on macOS, Windows, Linux, iPhone, iPad, and A
 3. Paste `c4g-john/scottsearch-for-obsidian`.
 4. Enable **ScottSearch** under **Settings → Community plugins**.
 
-Alternatively, download `scottsearch-0.1.5.zip` from the
-[0.1.5 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.5).
+Alternatively, download `scottsearch-0.1.6.zip` from the
+[0.1.6 human-testing release](https://github.com/c4g-john/scottsearch-for-obsidian/releases/tag/0.1.6).
 Unzip it and place the contained `scottsearch` folder inside
 `<vault>/.obsidian/plugins/`, restart Obsidian, and enable the plugin.
 
@@ -114,14 +117,22 @@ The [complete human-testing checklist](docs/HUMAN_TESTING.md) covers desktop, mo
 
 ### Startup and indexing
 
-After Obsidian restores the workspace, ScottSearch waits about five seconds
-before it starts automatic indexing. Opening or searching with ScottSearch
-starts the index immediately instead. Notes are read four at a time and the
-plugin yields between batches so a large vault does not monopolize the main
-event loop. Startup metadata-cache events are coalesced into that initial pass
-instead of launching one read per event. **Settings → ScottSearch → Index status** shows progress. This
-startup scheduling changes only when work begins; note contents still remain
-local and ScottSearch never edits them.
+The first 0.1.6 run builds a compressed, versioned lexical snapshot in
+ScottSearch's local plugin folder. Later launches restore that derived snapshot,
+wait about five seconds for workspace restoration, and compare only path,
+modification time, and size. Unchanged note bodies are not read or tokenized
+again; only new and changed notes are processed, while deleted notes are removed.
+Opening or searching with ScottSearch starts that reconciliation immediately.
+
+The snapshot contains derived term counts and file metadata, not full note
+bodies. ScottSearch lazily reads exact-phrase candidates and the small set of
+displayed results when it needs to verify a phrase or create a preview. Small
+updates use an append-only local journal, which is compressed back into the
+snapshot after the index is idle. A corrupt/incompatible snapshot, an
+index-affecting settings change, or the manual **Rebuild index** action safely
+falls back to the bounded four-note batches. **Settings → ScottSearch → Index
+status** shows progress. Note contents remain local and ScottSearch never edits
+them.
 
 ## Install for development
 

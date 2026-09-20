@@ -188,19 +188,21 @@ export function createScaleDocuments(count: number): SearchDocument[] {
     const paddedSequence = String(sequence).padStart(5, '0');
     const basename = `${topic.title} ${paddedSequence}`;
 
+    const content = [
+      `# ${basename}`,
+      topic.text,
+      draft ? 'Status draft.' : 'Status reviewed.',
+      splitBrain ? 'The fictional appendix mentions a split brain scenario.' : 'The fictional appendix records a routine scenario.',
+      `Synthetic scale document ${sequence}.`,
+    ].join('\n\n');
     return {
       basename,
-      content: [
-        `# ${basename}`,
-        topic.text,
-        draft ? 'Status draft.' : 'Status reviewed.',
-        splitBrain ? 'The fictional appendix mentions a split brain scenario.' : 'The fictional appendix records a routine scenario.',
-        `Synthetic scale document ${sequence}.`,
-      ].join('\n\n'),
+      content,
       ctime,
       extension: 'md',
       mtime,
       path: `${topic.folder}/${basename}.md`,
+      size: content.length,
       tags: topic.tags,
     };
   });

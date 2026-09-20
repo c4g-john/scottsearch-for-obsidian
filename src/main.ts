@@ -24,6 +24,12 @@ import {
   VerifiedModelAssetManager,
 } from './model-assets/verified-model-manager';
 import { OnDeviceEmbeddingProvider } from './on-device/provider';
+import {
+  createIndexSettingsSignature,
+  LexicalIndexDiskStore,
+  planIndexReconciliation,
+  type LexicalIndexJournalOperation,
+} from './persistent-index';
 import { parseQuery } from './query';
 import {
   normalizeResultDisplayMode,
@@ -49,6 +55,11 @@ import {
 
 declare const SCOTTSEARCH_ON_DEVICE_EXPERIMENT: boolean;
 declare const SCOTTSEARCH_MOBILE_ON_DEVICE_LAB: boolean;
+
+const LEXICAL_CACHE_SNAPSHOT = 'lexical-index-v1.json.gz';
+const LEXICAL_CACHE_JOURNAL = 'lexical-index-v1.journal';
+const LEXICAL_CACHE_COMPACT_AFTER = 500;
+const LEXICAL_CACHE_IDLE_COMPACT_MS = 30_000;
 
 export interface IndexStatus {
   phase: 'idle' | 'lexical' | 'semantic' | 'ready';
@@ -90,6 +101,10 @@ export default class ScottSearchPlugin extends Plugin {
   private semanticUpdateTimer?: number;
   private onDeviceProvider?: OnDeviceEmbeddingProvider;
   private saveQueue: Promise<void> = Promise.resolve();
+  private lexicalDiskStore?: LexicalIndexDiskStore;
+  private lexicalCacheLoaded = false;
+  private lexicalJournalOperations = 0;
+  private lexicalCompactTimer?: number;
   private readonly startupIndex = new IndexStartupCoordinator({
     clear: (handle) => window.clearTimeout(handle),
     set: (callback, delayMs) => window.setTimeout(callback, delayMs),
@@ -97,9 +112,14 @@ export default class ScottSearchPlugin extends Plugin {
   private readonly indexUpdates = new IndexUpdateBuffer<TFile>((file) => file.path);
 
   async onload(): Promise<void> {
+    const pluginDirectory = normalizePath(this.manifest.dir
+      ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`);
+    this.lexicalDiskStore = new LexicalIndexDiskStore(
+      this.app.vault.adapter,
+      normalizePath(`${pluginDirectory}/${LEXICAL_CACHE_SNAPSHOT}`),
+      normalizePath(`${pluginDirectory}/${LEXICAL_CACHE_JOURNAL}`),
+    );
     if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
-      const pluginDirectory = this.manifest.dir
-        ?? normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}`);
       this.modelAssetManager = new VerifiedModelAssetManager(
         normalizePath(`${pluginDirectory}/model-assets`),
         ARCTIC_EMBED_XS_INT8,
@@ -108,6 +128,7 @@ export default class ScottSearchPlugin extends Plugin {
       );
     }
     await this.loadPluginData();
+    await this.loadLexicalCache();
 
     this.registerView(VIEW_TYPE_SCOTTSEARCH, (leaf) => new ScottSearchView(leaf, this));
     this.addRibbonIcon('search', 'Open ScottSearch', () => void this.activateView());
@@ -137,7 +158,7 @@ export default class ScottSearchPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       if (this.status.phase !== 'idle') return;
-      this.startupIndex.afterLayoutReady(() => void this.rebuildIndex());
+      this.startupIndex.afterLayoutReady(() => void this.reconcileIndex());
     });
   }
 
@@ -151,6 +172,8 @@ export default class ScottSearchPlugin extends Plugin {
     this.disposeOnDeviceProvider();
     for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
     if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
+    if (this.lexicalCompactTimer !== undefined) window.clearTimeout(this.lexicalCompactTimer);
+    void this.lexicalDiskStore?.flush();
     this.modelAssetManager?.cancelInstall();
   }
 
@@ -168,6 +191,7 @@ export default class ScottSearchPlugin extends Plugin {
   async search(rawQuery: string, sort: SortMode, filters: ResultFilters): Promise<SearchExecution> {
     this.startIndexNow();
     const query = parseQuery(rawQuery);
+    await this.hydratePaths(this.lexicalIndex.phraseContentCandidates(query));
     let semanticScores: Map<string, number> | undefined;
     let fallbackReason: string | undefined;
 
@@ -198,44 +222,89 @@ export default class ScottSearchPlugin extends Plugin {
       }
     }
 
-    return {
-      ...this.lexicalIndex.searchParsed(query, {
+    const runSearch = (): SearchResponse => this.lexicalIndex.searchParsed(query, {
         filters,
         limit: this.settings.resultLimit,
         semanticScores,
         semanticWeight: this.settings.semanticWeight,
         sort,
         verboseContextCharacters: this.settings.verboseContextCharacters,
-      }),
+      });
+    let response = runSearch();
+    const displayPaths = this.lexicalIndex.pathsMissingContent(
+      response.results.map((result) => result.path),
+    );
+    if (displayPaths.length > 0) {
+      await this.hydratePaths(displayPaths);
+      response = runSearch();
+    }
+
+    return {
+      ...response,
       fallbackReason,
       semanticActive: semanticScores !== undefined,
     };
   }
 
+  async reconcileIndex(): Promise<void> {
+    const generation = this.beginIndexPass();
+    const files = this.app.vault.getMarkdownFiles().filter((file) => !this.isIgnored(file.path));
+    const plan = planIndexReconciliation(
+      this.lexicalIndex.listFingerprints(),
+      files.map((file) => ({ file, mtime: file.stat.mtime, path: file.path, size: file.stat.size })),
+    );
+
+    for (const path of plan.removed) this.removeFile(path, false);
+    for (const { file } of plan.unchanged) this.indexUpdates.markProcessed(file.path);
+    this.setStatus({
+      indexedFiles: this.lexicalIndex.size,
+      phase: 'lexical',
+      semanticFiles: this.semanticIndex.size,
+      totalFiles: files.length,
+    });
+
+    const completed = await runBatched(plan.changed, async ({ file }) => this.indexFile(file, false), {
+      batchSize: INDEX_READ_BATCH_SIZE,
+      isCurrent: () => generation === this.indexGeneration,
+      onBatchComplete: () => this.setStatus({ ...this.status, indexedFiles: this.lexicalIndex.size }),
+      yieldControl: yieldToEventLoop,
+    });
+    if (!completed) return;
+
+    if (!this.lexicalCacheLoaded || plan.changed.length + plan.removed.length >= LEXICAL_CACHE_COMPACT_AFTER) {
+      await this.compactLexicalCache();
+    } else {
+      for (const path of plan.removed) await this.appendLexicalCache({ path, type: 'remove' });
+      for (const { file } of plan.changed) {
+        if (this.lexicalIndex.has(file.path)) {
+          await this.appendLexicalCache({
+            document: this.lexicalIndex.serializeDocument(file.path),
+            type: 'upsert',
+          });
+        }
+      }
+    }
+
+    this.indexUpdates.finishRebuild((file) => this.queueFileUpdate(file));
+    if (this.settings.semanticEnabled) await this.rebuildSemanticIndex();
+    else this.setStatus({ ...this.status, phase: 'ready', semanticFiles: this.semanticIndex.size });
+  }
+
   async rebuildIndex(): Promise<void> {
-    this.startupIndex.cancel();
-    this.indexUpdates.beginRebuild();
-    for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
-    this.updateTimers.clear();
-    if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
-    this.semanticUpdateTimer = undefined;
-    const generation = ++this.indexGeneration;
-    this.semanticGeneration += 1;
-    this.semanticAbortController?.abort();
-    this.semanticAbortController = undefined;
+    const generation = this.beginIndexPass();
     this.lexicalIndex.clear();
-    this.semanticQueryCache.clear();
 
     const files = this.app.vault.getMarkdownFiles().filter((file) => !this.isIgnored(file.path));
     this.setStatus({ indexedFiles: 0, phase: 'lexical', semanticFiles: 0, totalFiles: files.length });
 
-    const completed = await runBatched(files, async (file) => this.indexFile(file), {
+    const completed = await runBatched(files, async (file) => this.indexFile(file, false), {
       batchSize: INDEX_READ_BATCH_SIZE,
       isCurrent: () => generation === this.indexGeneration,
       onBatchComplete: (indexedFiles) => this.setStatus({ ...this.status, indexedFiles }),
       yieldControl: yieldToEventLoop,
     });
     if (!completed) return;
+    await this.compactLexicalCache();
     this.indexUpdates.finishRebuild((file) => this.queueFileUpdate(file));
     if (this.settings.semanticEnabled) await this.rebuildSemanticIndex();
     else this.setStatus({ ...this.status, phase: 'ready', semanticFiles: this.semanticIndex.size });
@@ -254,9 +323,15 @@ export default class ScottSearchPlugin extends Plugin {
     this.semanticQueryCache.clear();
     this.setStatus({ ...this.status, lastError: undefined, phase: 'semantic' });
     try {
+      const provider = this.createEmbeddingProvider();
+      const hydrated = await this.hydratePaths(this.semanticIndex.pathsNeedingUpdate(
+        this.lexicalIndex.listDocuments(),
+        provider.id,
+      ), () => generation === this.semanticGeneration && !controller.signal.aborted);
+      if (!hydrated) return;
       await this.semanticIndex.update(
         this.lexicalIndex.listDocuments(),
-        this.createEmbeddingProvider(),
+        provider,
         this.settings.embeddingBatchSize,
         ({ completed }) => {
           if (generation === this.semanticGeneration) {
@@ -380,16 +455,66 @@ export default class ScottSearchPlugin extends Plugin {
 
   private startIndexNow(): void {
     if (this.status.phase !== 'idle') return;
-    this.startupIndex.runNow(() => void this.rebuildIndex());
+    this.startupIndex.runNow(() => void this.reconcileIndex());
   }
 
-  private async indexFile(file: TFile): Promise<void> {
+  private beginIndexPass(): number {
+    this.startupIndex.cancel();
+    this.indexUpdates.beginRebuild();
+    for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
+    this.updateTimers.clear();
+    if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
+    this.semanticUpdateTimer = undefined;
+    const generation = ++this.indexGeneration;
+    this.semanticGeneration += 1;
+    this.semanticAbortController?.abort();
+    this.semanticAbortController = undefined;
+    this.semanticQueryCache.clear();
+    return generation;
+  }
+
+  private async loadLexicalCache(): Promise<void> {
+    const store = this.lexicalDiskStore;
+    if (!store) return;
+    try {
+      const cached = await store.load(this.indexSettingsSignature());
+      if (!cached) return;
+      this.lexicalIndex.load(cached.index);
+      this.lexicalCacheLoaded = true;
+      this.lexicalJournalOperations = cached.journalOperations;
+      this.status.indexedFiles = this.lexicalIndex.size;
+      this.status.totalFiles = this.lexicalIndex.size;
+      if (cached.journalOperations > 0) this.scheduleLexicalCacheCompaction();
+    } catch {
+      this.lexicalCacheLoaded = false;
+    }
+  }
+
+  private async hydratePaths(
+    paths: readonly string[],
+    isCurrent: () => boolean = () => true,
+  ): Promise<boolean> {
+    const files = [...new Set(paths)]
+      .map((path) => this.app.vault.getAbstractFileByPath(path))
+      .filter((file): file is TFile => (
+        file instanceof TFile
+        && file.extension === 'md'
+        && !this.isIgnored(file.path)
+      ));
+    return runBatched(files, async (file) => this.indexFile(file, false), {
+      batchSize: INDEX_READ_BATCH_SIZE,
+      isCurrent,
+      yieldControl: yieldToEventLoop,
+    });
+  }
+
+  private async indexFile(file: TFile, persist = true): Promise<void> {
     if (this.isIgnored(file.path)) {
-      this.removeFile(file.path);
+      this.removeFile(file.path, persist);
       return;
     }
     if (this.app.vault.getAbstractFileByPath(file.path) !== file) {
-      this.removeFile(file.path);
+      this.removeFile(file.path, persist);
       return;
     }
     const content = file.stat.size <= this.settings.maxFileSizeKb * 1024
@@ -403,9 +528,16 @@ export default class ScottSearchPlugin extends Plugin {
       extension: file.extension,
       mtime: file.stat.mtime,
       path: file.path,
+      size: file.stat.size,
       tags: cache ? (getAllTags(cache) ?? []) : [],
     });
     this.indexUpdates.markProcessed(file.path);
+    if (persist) {
+      await this.appendLexicalCache({
+        document: this.lexicalIndex.serializeDocument(file.path),
+        type: 'upsert',
+      });
+    }
   }
 
   private queueFileUpdate(file: TAbstractFile): void {
@@ -423,11 +555,12 @@ export default class ScottSearchPlugin extends Plugin {
     this.updateTimers.set(file.path, timer);
   }
 
-  private removeFile(path: string): void {
+  private removeFile(path: string, persist = true): void {
     const timer = this.updateTimers.get(path);
     if (timer !== undefined) window.clearTimeout(timer);
     this.updateTimers.delete(path);
     this.indexUpdates.remove(path);
+    const hadLexicalDocument = this.lexicalIndex.has(path);
     this.lexicalIndex.remove(path);
     this.semanticIndex.remove(path);
     const hadCachedEmbedding = this.persistedEmbeddings[path] !== undefined;
@@ -439,6 +572,9 @@ export default class ScottSearchPlugin extends Plugin {
       semanticFiles: this.semanticIndex.size,
       totalFiles: this.lexicalIndex.size,
     });
+    if (persist && hadLexicalDocument) {
+      void this.appendLexicalCache({ path, type: 'remove' });
+    }
     if (hadCachedEmbedding) void this.savePluginData();
     if (this.settings.semanticEnabled && this.indexUpdates.isReady) this.scheduleSemanticUpdate();
   }
@@ -449,6 +585,51 @@ export default class ScottSearchPlugin extends Plugin {
       this.semanticUpdateTimer = undefined;
       void this.rebuildSemanticIndex();
     }, 1000);
+  }
+
+  private indexSettingsSignature(): string {
+    return createIndexSettingsSignature(this.settings);
+  }
+
+  private async appendLexicalCache(operation: LexicalIndexJournalOperation): Promise<void> {
+    const store = this.lexicalDiskStore;
+    if (!store || !this.lexicalCacheLoaded) {
+      await this.compactLexicalCache();
+      return;
+    }
+    try {
+      await store.append(operation);
+      this.lexicalJournalOperations += 1;
+      if (this.lexicalJournalOperations >= LEXICAL_CACHE_COMPACT_AFTER) {
+        await this.compactLexicalCache();
+      } else {
+        this.scheduleLexicalCacheCompaction();
+      }
+    } catch {
+      this.lexicalCacheLoaded = false;
+    }
+  }
+
+  private async compactLexicalCache(): Promise<void> {
+    const store = this.lexicalDiskStore;
+    if (!store) return;
+    if (this.lexicalCompactTimer !== undefined) window.clearTimeout(this.lexicalCompactTimer);
+    this.lexicalCompactTimer = undefined;
+    try {
+      await store.compact(() => this.lexicalIndex.serialize(), this.indexSettingsSignature());
+      this.lexicalCacheLoaded = true;
+      this.lexicalJournalOperations = 0;
+    } catch {
+      this.lexicalCacheLoaded = false;
+    }
+  }
+
+  private scheduleLexicalCacheCompaction(): void {
+    if (this.lexicalCompactTimer !== undefined) window.clearTimeout(this.lexicalCompactTimer);
+    this.lexicalCompactTimer = window.setTimeout(() => {
+      this.lexicalCompactTimer = undefined;
+      void this.compactLexicalCache();
+    }, LEXICAL_CACHE_IDLE_COMPACT_MS);
   }
 
   private isIgnored(path: string): boolean {

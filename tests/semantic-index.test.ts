@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { cosineSimilarity, SemanticIndex, type EmbeddingProvider } from '../src/semantic-index';
+import {
+  cosineSimilarity,
+  SemanticIndex,
+  type EmbeddingProvider,
+  type SerializedEmbeddingCache,
+} from '../src/semantic-index';
 import type { SearchDocument } from '../src/search-engine';
 
 function document(path: string, mtime: number): SearchDocument {
@@ -11,6 +16,7 @@ function document(path: string, mtime: number): SearchDocument {
     extension: 'md',
     mtime,
     path,
+    size: `Content for ${path}`.length,
     tags: [],
   };
 }
@@ -54,6 +60,36 @@ describe('SemanticIndex', () => {
 
     expect(first.embed).toHaveBeenCalledOnce();
     expect(second.embed).toHaveBeenCalledOnce();
+  });
+
+  it('identifies only missing, stale, or differently configured document content', async () => {
+    const index = new SemanticIndex();
+    const embedder = provider();
+    await index.update([document('Fresh.md', 1), document('Stale.md', 1)], embedder, 10);
+
+    expect(index.pathsNeedingUpdate([
+      document('Fresh.md', 1),
+      document('Stale.md', 2),
+      document('Missing.md', 1),
+    ], embedder.id)).toEqual(['Stale.md', 'Missing.md']);
+    expect(index.pathsNeedingUpdate([
+      { ...document('Fresh.md', 1), size: 999 },
+    ], embedder.id)).toEqual(['Fresh.md']);
+    expect(index.pathsNeedingUpdate([document('Fresh.md', 1)], 'another:model')).toEqual(['Fresh.md']);
+  });
+
+  it('migrates legacy vectors to size fingerprints without re-embedding unchanged notes', () => {
+    const index = new SemanticIndex();
+    index.load({
+      'Fresh.md': {
+        mtime: 1,
+        providerId: 'test:model',
+        vector: [1, 0],
+      },
+    } as unknown as SerializedEmbeddingCache);
+
+    expect(index.pathsNeedingUpdate([document('Fresh.md', 1)], 'test:model')).toEqual([]);
+    expect(index.serialize()['Fresh.md']?.size).toBe(document('Fresh.md', 1).size);
   });
 
   it('serializes normalized vectors and scores queries with cosine similarity', async () => {

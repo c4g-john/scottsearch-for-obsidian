@@ -11,6 +11,7 @@ export interface EmbeddingProvider {
 export interface SerializedEmbedding {
   mtime: number;
   providerId: string;
+  size: number;
   vector: number[];
 }
 
@@ -53,9 +54,30 @@ export class SemanticIndex {
       [...this.cache.entries()].map(([path, entry]) => [path, {
         mtime: entry.mtime,
         providerId: entry.providerId,
+        size: entry.size,
         vector: entry.vector,
       }]),
     );
+  }
+
+  pathsNeedingUpdate(documents: SearchDocument[], providerId: string): string[] {
+    return documents
+      .filter((document) => {
+        const cached = this.cache.get(document.path);
+        if (
+          cached
+          && cached.size === undefined
+          && cached.mtime === document.mtime
+          && cached.providerId === providerId
+        ) {
+          cached.size = document.size;
+          return false;
+        }
+        return cached?.mtime !== document.mtime
+          || cached.size !== document.size
+          || cached.providerId !== providerId;
+      })
+      .map((document) => document.path);
   }
 
   async update(
@@ -71,10 +93,8 @@ export class SemanticIndex {
       if (!currentPaths.has(path)) this.cache.delete(path);
     }
 
-    const pending = documents.filter((document) => {
-      const cached = this.cache.get(document.path);
-      return cached?.mtime !== document.mtime || cached.providerId !== provider.id;
-    });
+    const pendingPaths = new Set(this.pathsNeedingUpdate(documents, provider.id));
+    const pending = documents.filter((document) => pendingPaths.has(document.path));
     let completed = documents.length - pending.length;
     onProgress?.({ completed, total: documents.length });
 
@@ -94,7 +114,12 @@ export class SemanticIndex {
         if (!document || !sourceVector) throw new Error('Embedding provider returned an incomplete batch.');
         const vector = normalizeVector(sourceVector);
         if (!vector) throw new Error(`Embedding provider returned an invalid vector for ${document.path}.`);
-        this.cache.set(document.path, { mtime: document.mtime, providerId: provider.id, vector });
+        this.cache.set(document.path, {
+          mtime: document.mtime,
+          providerId: provider.id,
+          size: document.size,
+          vector,
+        });
       }
 
       completed += batch.length;

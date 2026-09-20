@@ -8,7 +8,9 @@ Thank you for trying an early version of ScottSearch. You do not need to underst
 2. Install ScottSearch with the [friendly website instructions](https://c4g-john.github.io/scottsearch-for-obsidian/#install).
 3. Keep private note text, names, and vault paths out of public reports. If something fails, make a fictional note with the same shape and use that in your example.
 
-ScottSearch reads notes to build its search index. It does not change note contents. Semantic ranking is optional and off by default.
+ScottSearch reads notes to build its first search index. It does not change note
+contents. Later launches restore a compressed derived index and should read only
+new or changed notes. Semantic ranking is optional and off by default.
 
 ## The test pass
 
@@ -17,17 +19,20 @@ Use whichever desktop and mobile devices are available to you. The friendly test
 ### 0. Restart and watch workspace restoration
 
 - Enable ScottSearch, close Obsidian normally, and start it again.
-- Confirm that the normal workspace becomes usable before ScottSearch begins a
-  full-vault index.
+- On the first 0.1.6 start, allow the initial index to finish, then close and
+  start Obsidian one more time for the warm-start test.
+- Confirm that the normal workspace becomes usable and that the second start
+  does not repeat a full-vault note read.
 - Wait about five seconds and open **Settings → ScottSearch** to watch **Index
-  status**, or open ScottSearch immediately to start indexing on demand.
-- While indexing advances, switch notes, type in an editor, and open settings.
+  status**, or open ScottSearch immediately to start reconciliation on demand.
+- While the check advances, switch notes, type in an editor, and open settings.
 
 Expected: workspace restoration does not appear stuck waiting for ScottSearch.
-Automatic indexing starts after the short grace period; explicitly opening or
-using ScottSearch starts it immediately. The interface remains responsive while
-notes are indexed in small batches. Record an approximate note-count range and
-startup/index timing if practical; **Not measured** is acceptable.
+The second launch restores the local derived snapshot, checks inexpensive file
+fingerprints, and reads zero unchanged note bodies. Only new or changed notes
+show indexing work. Exact-phrase searches and visible previews may read the
+small candidate/result set on demand. Record an approximate note-count range
+and cold-versus-warm startup timing if practical; **Not measured** is acceptable.
 
 ### 1. Find a remembered idea
 
@@ -129,7 +134,9 @@ Expected: input, filters, result titles, snippets, scores, and controls remain r
 - Create or edit a fictional note containing an unusual test phrase.
 - Search for it, rename it, search again, and then delete it.
 
-Expected: the index follows creates, edits, renames, and deletions without a manual restart. These incremental updates still work after the deferred startup index completes.
+Expected: the index follows creates, edits, renames, and deletions without a
+manual restart. Restart once more: only those changes should require note reads,
+while unchanged entries come from the local snapshot.
 
 ### 8. Disable and remove the plugin
 

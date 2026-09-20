@@ -15,9 +15,11 @@ export interface SearchDocument {
   tags: string[];
   ctime: number;
   mtime: number;
+  size: number;
 }
 
 interface IndexedDocument extends SearchDocument {
+  contentLoaded: boolean;
   folder: string;
   normalizedPath: string;
   normalizedName: string;
@@ -26,6 +28,28 @@ interface IndexedDocument extends SearchDocument {
   searchableTokens: Set<string>;
   termFrequency: Map<string, number>;
   tokenCount: number;
+}
+
+export interface SerializedLexicalDocument {
+  path: string;
+  basename: string;
+  extension: string;
+  tags: string[];
+  ctime: number;
+  mtime: number;
+  size: number;
+  termFrequency: Record<string, number>;
+  tokenCount: number;
+}
+
+export interface SerializedLexicalIndex {
+  documents: SerializedLexicalDocument[];
+}
+
+export interface SearchDocumentFingerprint {
+  path: string;
+  mtime: number;
+  size: number;
 }
 
 export type SortMode =
@@ -101,6 +125,10 @@ export class RankedSearchIndex {
     return this.documents.size;
   }
 
+  has(path: string): boolean {
+    return this.documents.has(path);
+  }
+
   clear(): void {
     this.documents.clear();
     this.documentFrequency.clear();
@@ -115,8 +143,96 @@ export class RankedSearchIndex {
       extension: document.extension,
       mtime: document.mtime,
       path: document.path,
+      size: document.size,
       tags: document.tags,
     }));
+  }
+
+  listFingerprints(): SearchDocumentFingerprint[] {
+    return [...this.documents.values()].map(({ path, mtime, size }) => ({ mtime, path, size }));
+  }
+
+  serialize(): SerializedLexicalIndex {
+    return {
+      documents: [...this.documents.values()].map((document) => this.serializeDocument(document.path)),
+    };
+  }
+
+  serializeDocument(path: string): SerializedLexicalDocument {
+    const document = this.documents.get(path);
+    if (!document) throw new Error(`Cannot serialize missing lexical document: ${path}`);
+    return {
+      basename: document.basename,
+      ctime: document.ctime,
+      extension: document.extension,
+      mtime: document.mtime,
+      path: document.path,
+      size: document.size,
+      tags: [...document.tags],
+      termFrequency: Object.fromEntries(document.termFrequency),
+      tokenCount: document.tokenCount,
+    };
+  }
+
+  load(serialized: SerializedLexicalIndex): void {
+    this.clear();
+    for (const document of serialized.documents) this.restore(document);
+  }
+
+  restore(document: SerializedLexicalDocument): void {
+    this.remove(document.path);
+    const termFrequency = new Map(Object.entries(document.termFrequency));
+    const metadataTokens = tokenize(`${document.basename} ${document.path} ${document.tags.join(' ')}`);
+    const normalizedPath = normalizeSearchText(document.path);
+    this.add({
+      basename: document.basename,
+      content: '',
+      contentLoaded: false,
+      ctime: document.ctime,
+      extension: document.extension,
+      folder: getFolder(document.path),
+      mtime: document.mtime,
+      normalizedContent: '',
+      normalizedName: normalizeSearchText(document.basename),
+      normalizedPath,
+      normalizedTags: document.tags.map((tag) => normalizeSearchText(tag.replace(/^#/, ''))),
+      path: document.path,
+      searchableTokens: new Set([...termFrequency.keys(), ...metadataTokens]),
+      size: document.size,
+      tags: [...document.tags],
+      termFrequency,
+      tokenCount: document.tokenCount,
+    });
+  }
+
+  pathsMissingContent(paths: Iterable<string>): string[] {
+    const missing: string[] = [];
+    for (const path of paths) {
+      const document = this.documents.get(path);
+      if (document && !document.contentLoaded) missing.push(path);
+    }
+    return missing;
+  }
+
+  phraseContentCandidates(query: SearchQuery): string[] {
+    const phrases = unique([
+      ...query.semanticPhrases,
+      ...query.requiredPhrases,
+      ...query.excludedPhrases,
+    ]);
+    if (phrases.length === 0) return [];
+
+    const candidates: string[] = [];
+    for (const document of this.documents.values()) {
+      if (document.contentLoaded) continue;
+      const needsContent = phrases.some((phrase) => {
+        if (matchesMetadataPhrase(document, phrase)) return false;
+        const terms = tokenize(phrase);
+        return terms.length === 0 || terms.every((term) => document.termFrequency.has(term));
+      });
+      if (needsContent) candidates.push(document.path);
+    }
+    return candidates;
   }
 
   upsert(document: SearchDocument): void {
@@ -128,6 +244,7 @@ export class RankedSearchIndex {
     const normalizedPath = normalizeSearchText(document.path);
     const indexed: IndexedDocument = {
       ...document,
+      contentLoaded: true,
       folder: getFolder(document.path),
       normalizedPath,
       normalizedName: normalizeSearchText(document.basename),
@@ -138,9 +255,13 @@ export class RankedSearchIndex {
       tokenCount: contentTokens.length,
     };
 
-    this.documents.set(document.path, indexed);
+    this.add(indexed);
+  }
+
+  private add(indexed: IndexedDocument): void {
+    this.documents.set(indexed.path, indexed);
     this.totalTokenCount += indexed.tokenCount;
-    for (const term of termFrequency.keys()) {
+    for (const term of indexed.termFrequency.keys()) {
       this.documentFrequency.set(term, (this.documentFrequency.get(term) ?? 0) + 1);
     }
   }
@@ -321,6 +442,12 @@ function scorePhrase(document: IndexedDocument, phrase: string): number {
   if (document.normalizedTags.some((tag) => tag.includes(phrase))) return 10;
   if (document.normalizedContent.includes(phrase)) return 8;
   return 0;
+}
+
+function matchesMetadataPhrase(document: IndexedDocument, phrase: string): boolean {
+  return document.normalizedName.includes(phrase)
+    || document.normalizedPath.includes(phrase)
+    || document.normalizedTags.some((tag) => tag.includes(phrase));
 }
 
 function fuzzyMatchScore(value: string, query: string): number {
