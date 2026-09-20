@@ -45,6 +45,51 @@ export class IndexStartupCoordinator {
   }
 }
 
+export class IndexUpdateBuffer<T> {
+  private readonly pending = new Map<string, T>();
+  private ready = false;
+
+  constructor(private readonly keyOf: (item: T) => string) {}
+
+  beginRebuild(): void {
+    this.ready = false;
+  }
+
+  defer(item: T): boolean {
+    if (this.ready) return false;
+    this.pending.set(this.keyOf(item), item);
+    return true;
+  }
+
+  markProcessed(key: string): void {
+    this.pending.delete(key);
+  }
+
+  remove(key: string): void {
+    this.pending.delete(key);
+  }
+
+  finishRebuild(schedule: (item: T) => void): void {
+    this.ready = true;
+    const pending = [...this.pending.values()];
+    this.pending.clear();
+    for (const item of pending) schedule(item);
+  }
+
+  clear(): void {
+    this.ready = false;
+    this.pending.clear();
+  }
+
+  get isReady(): boolean {
+    return this.ready;
+  }
+
+  get size(): number {
+    return this.pending.size;
+  }
+}
+
 interface BatchedWorkOptions {
   batchSize?: number;
   isCurrent: () => boolean;

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   INDEX_READ_BATCH_SIZE,
   IndexStartupCoordinator,
+  IndexUpdateBuffer,
   runBatched,
   STARTUP_INDEX_DELAY_MS,
   type TimeoutScheduler,
@@ -76,6 +77,49 @@ describe('IndexStartupCoordinator', () => {
 
     expect(start).not.toHaveBeenCalled();
     expect(scheduler.tasks.size).toBe(0);
+  });
+});
+
+describe('IndexUpdateBuffer', () => {
+  it('coalesces startup cache events without scheduling note reads', () => {
+    const buffer = new IndexUpdateBuffer<{ path: string; revision: number }>((item) => item.path);
+
+    expect(buffer.defer({ path: 'Alpha.md', revision: 1 })).toBe(true);
+    expect(buffer.defer({ path: 'Alpha.md', revision: 2 })).toBe(true);
+    expect(buffer.defer({ path: 'Beta.md', revision: 1 })).toBe(true);
+
+    expect(buffer.size).toBe(2);
+  });
+
+  it('drops events covered by the full rebuild and flushes only later changes', () => {
+    const buffer = new IndexUpdateBuffer<{ path: string; revision: number }>((item) => item.path);
+    const scheduled: Array<{ path: string; revision: number }> = [];
+    buffer.defer({ path: 'Covered.md', revision: 1 });
+    buffer.defer({ path: 'ChangedLater.md', revision: 1 });
+
+    buffer.markProcessed('Covered.md');
+    buffer.markProcessed('ChangedLater.md');
+    buffer.defer({ path: 'ChangedLater.md', revision: 2 });
+    buffer.finishRebuild((item) => scheduled.push(item));
+
+    expect(scheduled).toEqual([{ path: 'ChangedLater.md', revision: 2 }]);
+    expect(buffer.isReady).toBe(true);
+    expect(buffer.defer({ path: 'Immediate.md', revision: 1 })).toBe(false);
+  });
+
+  it('forgets deleted paths and resets for an explicit rebuild', () => {
+    const buffer = new IndexUpdateBuffer<{ path: string }>((item) => item.path);
+    const scheduled: Array<{ path: string }> = [];
+    buffer.defer({ path: 'Deleted.md' });
+    buffer.remove('Deleted.md');
+    buffer.finishRebuild((item) => scheduled.push(item));
+
+    expect(scheduled).toEqual([]);
+    buffer.beginRebuild();
+    expect(buffer.isReady).toBe(false);
+    expect(buffer.defer({ path: 'During-rebuild.md' })).toBe(true);
+    buffer.clear();
+    expect(buffer.size).toBe(0);
   });
 });
 

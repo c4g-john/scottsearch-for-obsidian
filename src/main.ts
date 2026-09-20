@@ -14,6 +14,7 @@ import { OllamaEmbeddingProvider } from './ollama-provider';
 import {
   INDEX_READ_BATCH_SIZE,
   IndexStartupCoordinator,
+  IndexUpdateBuffer,
   runBatched,
 } from './index-lifecycle';
 import { ARCTIC_EMBED_XS_INT8 } from './model-assets/manifest';
@@ -93,6 +94,7 @@ export default class ScottSearchPlugin extends Plugin {
     clear: (handle) => window.clearTimeout(handle),
     set: (callback, delayMs) => window.setTimeout(callback, delayMs),
   });
+  private readonly indexUpdates = new IndexUpdateBuffer<TFile>((file) => file.path);
 
   async onload(): Promise<void> {
     if (SCOTTSEARCH_ON_DEVICE_EXPERIMENT) {
@@ -141,6 +143,7 @@ export default class ScottSearchPlugin extends Plugin {
 
   onunload(): void {
     this.startupIndex.cancel();
+    this.indexUpdates.clear();
     this.indexGeneration += 1;
     this.semanticGeneration += 1;
     this.semanticAbortController?.abort();
@@ -211,6 +214,11 @@ export default class ScottSearchPlugin extends Plugin {
 
   async rebuildIndex(): Promise<void> {
     this.startupIndex.cancel();
+    this.indexUpdates.beginRebuild();
+    for (const timer of this.updateTimers.values()) window.clearTimeout(timer);
+    this.updateTimers.clear();
+    if (this.semanticUpdateTimer !== undefined) window.clearTimeout(this.semanticUpdateTimer);
+    this.semanticUpdateTimer = undefined;
     const generation = ++this.indexGeneration;
     this.semanticGeneration += 1;
     this.semanticAbortController?.abort();
@@ -228,6 +236,7 @@ export default class ScottSearchPlugin extends Plugin {
       yieldControl: yieldToEventLoop,
     });
     if (!completed) return;
+    this.indexUpdates.finishRebuild((file) => this.queueFileUpdate(file));
     if (this.settings.semanticEnabled) await this.rebuildSemanticIndex();
     else this.setStatus({ ...this.status, phase: 'ready', semanticFiles: this.semanticIndex.size });
   }
@@ -379,6 +388,10 @@ export default class ScottSearchPlugin extends Plugin {
       this.removeFile(file.path);
       return;
     }
+    if (this.app.vault.getAbstractFileByPath(file.path) !== file) {
+      this.removeFile(file.path);
+      return;
+    }
     const content = file.stat.size <= this.settings.maxFileSizeKb * 1024
       ? await this.app.vault.cachedRead(file)
       : '';
@@ -392,10 +405,12 @@ export default class ScottSearchPlugin extends Plugin {
       path: file.path,
       tags: cache ? (getAllTags(cache) ?? []) : [],
     });
+    this.indexUpdates.markProcessed(file.path);
   }
 
   private queueFileUpdate(file: TAbstractFile): void {
     if (!(file instanceof TFile) || file.extension !== 'md') return;
+    if (this.indexUpdates.defer(file)) return;
     const previous = this.updateTimers.get(file.path);
     if (previous !== undefined) window.clearTimeout(previous);
     const timer = window.setTimeout(() => {
@@ -412,6 +427,7 @@ export default class ScottSearchPlugin extends Plugin {
     const timer = this.updateTimers.get(path);
     if (timer !== undefined) window.clearTimeout(timer);
     this.updateTimers.delete(path);
+    this.indexUpdates.remove(path);
     this.lexicalIndex.remove(path);
     this.semanticIndex.remove(path);
     const hadCachedEmbedding = this.persistedEmbeddings[path] !== undefined;
@@ -424,7 +440,7 @@ export default class ScottSearchPlugin extends Plugin {
       totalFiles: this.lexicalIndex.size,
     });
     if (hadCachedEmbedding) void this.savePluginData();
-    if (this.settings.semanticEnabled) this.scheduleSemanticUpdate();
+    if (this.settings.semanticEnabled && this.indexUpdates.isReady) this.scheduleSemanticUpdate();
   }
 
   private scheduleSemanticUpdate(): void {
